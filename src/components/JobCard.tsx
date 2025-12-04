@@ -148,7 +148,7 @@ export function JobCard({ job, onExpand }: JobCardProps) {
             variant="outline"
             size="sm"
             onClick={handleMockInterview}
-            className="flex-1 min-w-[100px]"
+            className="flex-1 md:flex-1 lg:flex-none min-w-[100px] lg:min-w-[140px]"
           >
             <MessageSquare className="h-4 w-4 mr-2" />
             Mock Interview
@@ -157,7 +157,7 @@ export function JobCard({ job, onExpand }: JobCardProps) {
             variant="outline"
             size="sm"
             onClick={handleTailorResume}
-            className="flex-1 min-w-[100px]"
+            className="flex-1 md:flex-1 lg:flex-none min-w-[100px] lg:min-w-[140px]"
           >
             <FileText className="h-4 w-4 mr-2" />
             Tailor Resume
@@ -166,7 +166,7 @@ export function JobCard({ job, onExpand }: JobCardProps) {
             variant="outline"
             size="sm"
             onClick={handleExplainJob}
-            className="flex-1 min-w-[100px]"
+            className="flex-1 md:flex-1 lg:flex-none min-w-[100px] lg:min-w-[140px]"
           >
             <HelpCircle className="h-4 w-4 mr-2" />
             Explain Job
