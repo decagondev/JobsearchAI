@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { MarkdownRenderer } from "@/components/MarkdownRenderer"
 import { chatWithGroq, getJobbySystemPrompt } from "@/lib/groqClient"
 import { db } from "@/lib/storage"
+import { memoryBank } from "@/lib/memoryBank"
 import { useRAGContext } from "@/hooks/useRAGContext"
 import { useSupportBot } from "@/contexts/SupportBotContext"
 
@@ -98,9 +99,8 @@ export function SupportBot() {
     setIsLoading(true)
 
     try {
-      // Build job-specific context using RAG hook
-      // Get userId from localStorage (set during onboarding)
-      const userId = localStorage.get('onboarding_session') as string | null
+      // Get userId from MemoryBank (proper way to get current session)
+      const userId = await memoryBank.getCurrentUserId()
       let context = ''
       
       if (userId) {
