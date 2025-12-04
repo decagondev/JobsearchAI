@@ -1,58 +1,50 @@
 /**
- * React Context for managing SupportBot state globally
- * Allows components to open chat with pre-filled prompts and specific modes
+ * React Context for managing Jobby (Jobsearch Assistant) state globally
+ * Allows components to open chat with pre-filled prompts and job context
  */
 
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
-import type { BotMode } from '@/lib/groqClient'
 
-interface SupportBotContextValue {
+interface JobbyContextValue {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
-  openChat: (mode: BotMode, initialMessage?: string, contextJobId?: string) => void
+  openChat: (initialMessage?: string, contextJobId?: string) => void
   initialMessage: string | null
   setInitialMessage: (message: string | null) => void
   contextJobId: string | null
   setContextJobId: (jobId: string | null) => void
-  mode: BotMode | null
-  setMode: (mode: BotMode | null) => void
 }
 
-const SupportBotContext = createContext<SupportBotContextValue | undefined>(undefined)
+const JobbyContext = createContext<JobbyContextValue | undefined>(undefined)
 
-interface SupportBotProviderProps {
+interface JobbyProviderProps {
   children: ReactNode
 }
 
 /**
- * Provider component for SupportBot context
+ * Provider component for Jobby (Jobsearch Assistant) context
  * Wraps the app to provide global chat state management
  * 
  * @example
  * ```tsx
- * <SupportBotProvider>
+ * <JobbyProvider>
  *   <App />
- * </SupportBotProvider>
+ * </JobbyProvider>
  * ```
  */
-export function SupportBotProvider({ children }: SupportBotProviderProps) {
+export function JobbyProvider({ children }: JobbyProviderProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [initialMessage, setInitialMessage] = useState<string | null>(null)
   const [contextJobId, setContextJobId] = useState<string | null>(null)
-  const [mode, setMode] = useState<BotMode | null>(null)
 
   /**
-   * Open chat with optional mode, initial message, and job context
+   * Open chat with optional initial message and job context
    * 
-   * @param mode - Bot mode to use (e.g., 'jobcoach')
    * @param initialMessage - Optional pre-filled message for the input
    * @param contextJobId - Optional job ID to filter RAG context
    */
   const openChat = useCallback(
-    (newMode: BotMode, newInitialMessage?: string, newContextJobId?: string) => {
-      if (newMode) {
-        setMode(newMode)
-      }
+    (newInitialMessage?: string, newContextJobId?: string) => {
       if (newInitialMessage) {
         setInitialMessage(newInitialMessage)
       }
@@ -65,7 +57,7 @@ export function SupportBotProvider({ children }: SupportBotProviderProps) {
   )
 
   return (
-    <SupportBotContext.Provider
+    <JobbyContext.Provider
       value={{
         isOpen,
         setIsOpen,
@@ -74,30 +66,32 @@ export function SupportBotProvider({ children }: SupportBotProviderProps) {
         setInitialMessage,
         contextJobId,
         setContextJobId,
-        mode,
-        setMode,
       }}
     >
       {children}
-    </SupportBotContext.Provider>
+    </JobbyContext.Provider>
   )
 }
 
 /**
- * Hook to access SupportBot context
- * Must be used within SupportBotProvider
+ * Hook to access Jobby context
+ * Must be used within JobbyProvider
  * 
  * @example
  * ```tsx
- * const { openChat, isOpen } = useSupportBot()
- * openChat('jobcoach', 'Help me prepare for this interview', 'job_123')
+ * const { openChat, isOpen } = useJobby()
+ * openChat('Help me prepare for this interview', 'job_123')
  * ```
  */
-export function useSupportBot(): SupportBotContextValue {
-  const context = useContext(SupportBotContext)
+export function useJobby(): JobbyContextValue {
+  const context = useContext(JobbyContext)
   if (context === undefined) {
-    throw new Error('useSupportBot must be used within SupportBotProvider')
+    throw new Error('useJobby must be used within JobbyProvider')
   }
   return context
 }
+
+// Legacy exports for backward compatibility
+export const SupportBotProvider = JobbyProvider
+export const useSupportBot = useJobby
 

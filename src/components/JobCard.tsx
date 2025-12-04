@@ -92,15 +92,15 @@ export function JobCard({ job, onExpand }: JobCardProps) {
 
   // Quick action handlers
   const handleMockInterview = () => {
-    openChat('jobcoach', getMockInterviewPrompt(job), job.id)
+    openChat(getMockInterviewPrompt(job), job.id)
   }
 
   const handleTailorResume = () => {
-    openChat('jobcoach', getTailorResumePrompt(job), job.id)
+    openChat(getTailorResumePrompt(job), job.id)
   }
 
   const handleExplainJob = () => {
-    openChat('jobcoach', getExplainJobPrompt(job), job.id)
+    openChat(getExplainJobPrompt(job), job.id)
   }
 
   return (

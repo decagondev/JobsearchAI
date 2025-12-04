@@ -1,13 +1,10 @@
 import { useState, useRef, useEffect } from "react"
-import { MessageSquare, X, Settings, Send, Upload, FileText, Loader2, Maximize2, Minimize2 } from "lucide-react"
+import { MessageSquare, X, Send, Loader2, Maximize2, Minimize2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { MarkdownRenderer } from "@/components/MarkdownRenderer"
-import { chatWithGroq, getSystemPrompt, type BotMode } from "@/lib/groqClient"
-import { parseFile, isResume } from "@/lib/fileParser"
-import { vectorDB } from "@/lib/vectorDB"
-import { localStorage, db } from "@/lib/storage"
-import siteContextData from "@/lib/siteContext.json"
+import { chatWithGroq, getJobbySystemPrompt } from "@/lib/groqClient"
+import { db } from "@/lib/storage"
 import { useRAGContext } from "@/hooks/useRAGContext"
 import { useSupportBot } from "@/contexts/SupportBotContext"
 
@@ -26,19 +23,13 @@ export function SupportBot() {
     setInitialMessage,
     contextJobId,
     setContextJobId,
-    mode: contextMode,
-    setMode: setContextMode,
   } = useSupportBot()
   
   const [isMaximized, setIsMaximized] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
-  const [mode, setMode] = useState<BotMode>('sales')
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [uploadedDocs, setUploadedDocs] = useState<Array<{ name: string; type: string }>>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const buildJobContext = useRAGContext()
 
@@ -46,20 +37,10 @@ export function SupportBot() {
   const isOpen = contextIsOpen
   const setIsOpen = setContextIsOpen
 
-  // Load saved mode and messages
+  // Load saved messages on mount
   useEffect(() => {
-    const savedMode = localStorage.get('bot_mode') as BotMode
-    if (savedMode) {
-      setMode(savedMode)
-      if (!contextMode) {
-        setContextMode(savedMode)
-      }
-    } else if (contextMode) {
-      setMode(contextMode)
-    }
-
     loadMessages()
-  }, [contextMode, setContextMode])
+  }, [])
 
   // Handle initial message from context (e.g., from quick actions)
   useEffect(() => {
@@ -72,14 +53,6 @@ export function SupportBot() {
       }, 100)
     }
   }, [isOpen, initialMessage, setInitialMessage])
-
-  // Handle mode change from context
-  useEffect(() => {
-    if (contextMode && contextMode !== mode) {
-      setMode(contextMode)
-      localStorage.set('bot_mode', contextMode)
-    }
-  }, [contextMode, mode])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -120,48 +93,40 @@ export function SupportBot() {
 
     setMessages(prev => [...prev, userMessage])
     await saveMessage(userMessage)
+    const currentInput = input
     setInput('')
     setIsLoading(true)
 
     try {
-      // Build context based on mode
-      let context = JSON.stringify(siteContextData, null, 2)
-
-      if (mode === 'raggy' && uploadedDocs.length > 0) {
-        // Get relevant chunks from vector DB
-        const results = await vectorDB.search(input, 5)
-        if (results.length > 0) {
-          context += '\n\nRelevant document excerpts:\n' + results.map(r => r.text).join('\n\n')
+      // Build job-specific context using RAG hook
+      // Get userId from localStorage (set during onboarding)
+      const userId = localStorage.get('onboarding_session') as string | null
+      let context = ''
+      
+      if (userId) {
+        // Build job-specific context using RAG hook
+        // Use contextJobId if provided (from quick actions)
+        context = await buildJobContext({
+          userId,
+          query: currentInput,
+          contextJobId: contextJobId || undefined,
+        })
+        // Clear contextJobId after use
+        if (contextJobId) {
+          setContextJobId(null)
         }
-      } else if (mode === 'jobcoach') {
-        // Get userId from localStorage (set during onboarding)
-        const userId = localStorage.get('onboarding_session') as string | null
-        if (userId) {
-          // Build job-specific context using RAG hook
-          // Use contextJobId if provided (from quick actions)
-          const jobContext = await buildJobContext({
-            userId,
-            query: input,
-            contextJobId: contextJobId || undefined,
-          })
-          context = jobContext
-          // Clear contextJobId after use
-          if (contextJobId) {
-            setContextJobId(null)
-          }
-        } else {
-          context = 'No user session found. Please complete onboarding first to use Job Coach mode.'
-        }
+      } else {
+        context = 'No user session found. Please complete onboarding first to get personalized assistance.'
       }
 
-      const systemPrompt = getSystemPrompt(mode, context)
+      const systemPrompt = getJobbySystemPrompt(context)
       const conversationMessages = [
         { role: 'system' as const, content: systemPrompt },
         ...messages.map(m => ({ role: m.role, content: m.content })),
-        { role: 'user' as const, content: input }
+        { role: 'user' as const, content: currentInput }
       ]
 
-      const response = await chatWithGroq(mode, conversationMessages, context)
+      const response = await chatWithGroq(conversationMessages, context)
 
       const assistantMessage: Message = {
         id: `msg_${Date.now() + 1}`,
@@ -176,172 +141,12 @@ export function SupportBot() {
       const errorMessage: Message = {
         id: `msg_${Date.now() + 1}`,
         role: 'assistant',
-        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again!`,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (!files || files.length === 0) return
-
-    try {
-      setIsLoading(true)
-      
-      let isResumeFile = false
-      const processedCount = { count: 0 }
-      
-      // Process all selected files
-      for (const file of Array.from(files)) {
-        try {
-          const parsed = await parseFile(file)
-          
-          // Check if it's a resume (only for single file uploads)
-          if (files.length === 1 && !isResumeFile) {
-            isResumeFile = isResume(parsed.text)
-          }
-          
-          // Split into chunks (smaller chunks for better retrieval)
-          const chunkSize = 500 // characters per chunk
-          const chunks: string[] = []
-          
-          // Split by paragraphs first, then by size
-          const paragraphs = parsed.text.split(/\n\n+/).filter(p => p.trim().length > 0)
-          
-          let currentChunk = ''
-          for (const para of paragraphs) {
-            if (currentChunk.length + para.length > chunkSize && currentChunk.length > 0) {
-              chunks.push(currentChunk.trim())
-              currentChunk = para
-            } else {
-              currentChunk += (currentChunk ? '\n\n' : '') + para
-            }
-          }
-          if (currentChunk.trim()) {
-            chunks.push(currentChunk.trim())
-          }
-
-          // Filter out very small chunks
-          const validChunks = chunks.filter(chunk => chunk.trim().length > 50)
-
-          if (validChunks.length === 0) {
-            throw new Error('File appears to be empty or could not be parsed')
-          }
-
-          // Upsert vectors (will replace if filename exists)
-          await vectorDB.upsertVectors(validChunks, {
-            filename: file.name,
-            fileType: parsed.fileType,
-            isResume: isResume(parsed.text),
-            ...parsed.metadata
-          })
-
-          // Update uploaded docs list
-          setUploadedDocs(prev => {
-            const filtered = prev.filter(doc => doc.name !== file.name)
-            return [...filtered, { name: file.name, type: parsed.fileType }]
-          })
-
-          // Save document to IndexedDB
-          await db.save('documents', {
-            filename: file.name,
-            content: parsed.text,
-            fileType: parsed.fileType,
-            metadata: parsed.metadata,
-            uploadedAt: new Date()
-          })
-          
-          processedCount.count++
-        } catch (fileError) {
-          const errorMessage: Message = {
-            id: `msg_${Date.now()}`,
-            role: 'assistant',
-            content: `❌ Failed to process "${file.name}": ${fileError instanceof Error ? fileError.message : 'Unknown error'}`,
-            timestamp: new Date()
-          }
-          setMessages(prev => [...prev, errorMessage])
-          continue // Process next file
-        }
-      }
-
-      // Success message
-      if (processedCount.count > 0) {
-        const successMessage: Message = {
-          id: `msg_${Date.now()}`,
-          role: 'assistant',
-          content: `✅ Successfully processed ${processedCount.count} file(s). I can now answer questions about ${processedCount.count === 1 && isResumeFile ? 'your resume' : 'the uploaded documents'}. What would you like to know?`,
-          timestamp: new Date()
-        }
-        setMessages(prev => [...prev, successMessage])
-        await saveMessage(successMessage)
-      }
-
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-    } catch (error) {
-      const errorMessage: Message = {
-        id: `msg_${Date.now()}`,
-        role: 'assistant',
-        content: `❌ Failed to process files: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMessage])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleRemoveFile = async (filename: string) => {
-    try {
-      // Remove vectors from vector DB
-      await vectorDB.removeByFilename(filename)
-      
-      // Remove from uploaded docs list
-      setUploadedDocs(prev => prev.filter(doc => doc.name !== filename))
-      
-      // Optionally remove from IndexedDB (optional, keeping for history)
-      // You can uncomment this if you want to remove from IndexedDB too
-      // const allDocs = await db.getAll('documents')
-      // const docToDelete = allDocs.find((d: any) => d.filename === filename)
-      // if (docToDelete) {
-      //   await db.delete('documents', docToDelete.id)
-      // }
-      
-      const removeMessage: Message = {
-        id: `msg_${Date.now()}`,
-        role: 'assistant',
-        content: `🗑️ Removed "${filename}" from the knowledge base.`,
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, removeMessage])
-      await saveMessage(removeMessage)
-    } catch (error) {
-      const errorMessage: Message = {
-        id: `msg_${Date.now()}`,
-        role: 'assistant',
-        content: `❌ Failed to remove "${filename}": ${error instanceof Error ? error.message : 'Unknown error'}`,
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, errorMessage])
-    }
-  }
-
-  const handleModeChange = (newMode: BotMode) => {
-    setMode(newMode)
-    setContextMode(newMode)
-    localStorage.set('bot_mode', newMode)
-    setShowSettings(false)
-    
-    // Clear vector DB when switching modes (except raggy and jobcoach which use vectorDB)
-    if (newMode !== 'raggy' && newMode !== 'jobcoach') {
-      vectorDB.clear()
-      setUploadedDocs([])
     }
   }
 
@@ -350,30 +155,22 @@ export function SupportBot() {
     await db.clear('chats')
   }
 
-  const modeLabels = {
-    sales: 'Sales Bot',
-    tutor: 'Tutor Bot',
-    raggy: 'Raggy Bot',
-    jobcoach: 'Job Coach'
-  }
-
-  const modeDescriptions = {
-    sales: 'Help hire BotAI for chatbot and AI solutions',
-    tutor: 'Learn about chatbots and BotAI services',
-    raggy: 'Upload files (PDF, Markdown, HTML, JS, etc.) and chat about them',
-    jobcoach: 'Get personalized job search coaching and interview prep'
-  }
-
   return (
     <>
       {/* Floating Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all flex items-center justify-center z-50"
-          aria-label="Open support bot"
+          className="fixed bottom-6 right-6 h-16 w-16 rounded-full bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground shadow-xl hover:shadow-2xl hover:scale-105 transition-all flex items-center justify-center z-50 group"
+          aria-label="Chat with Jobby"
         >
-          <MessageSquare className="h-6 w-6" />
+          <div className="relative">
+            <MessageSquare className="h-7 w-7" />
+            <Sparkles className="h-3 w-3 absolute -top-1 -right-1 text-yellow-300 animate-pulse" />
+          </div>
+          <span className="absolute -top-12 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs font-semibold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap shadow-lg">
+            Chat with Jobby
+          </span>
         </button>
       )}
 
@@ -384,13 +181,20 @@ export function SupportBot() {
             ? 'inset-4 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)]' 
             : 'bottom-6 right-6 w-96 h-[600px]'
         }`}>
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-primary" />
+          {/* Header with Branding */}
+          <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
+                  <MessageSquare className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <Sparkles className="h-3 w-3 absolute -top-0.5 -right-0.5 text-yellow-400" />
+              </div>
               <div>
-                <h3 className="font-semibold">Support Bot</h3>
-                <p className="text-xs text-muted-foreground">{modeLabels[mode]}</p>
+                <h3 className="font-bold text-lg bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                  Jobby
+                </h3>
+                <p className="text-xs text-muted-foreground font-medium">Your Jobsearch Assistant</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -410,14 +214,6 @@ export function SupportBot() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowSettings(!showSettings)}
-                className="h-8 w-8"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
                 onClick={() => setIsOpen(false)}
                 className="h-8 w-8"
               >
@@ -426,88 +222,31 @@ export function SupportBot() {
             </div>
           </div>
 
-          {/* Settings Panel */}
-          {showSettings && (
-            <div className="p-4 border-b border-border bg-muted/50">
-              <h4 className="font-semibold mb-3">Select Mode</h4>
-              <div className="space-y-2">
-                {(Object.keys(modeLabels) as BotMode[]).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => handleModeChange(m)}
-                    className={`w-full text-left p-2 rounded-md text-sm transition-colors ${
-                      mode === m
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-background hover:bg-accent'
-                    }`}
-                  >
-                    <div className="font-medium">{modeLabels[m]}</div>
-                    <div className="text-xs opacity-80">{modeDescriptions[m]}</div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Mode-specific controls */}
-              {mode === 'raggy' && (
-                <div className="mt-4">
-                  <label className="text-sm font-medium mb-2 block">Upload Files</label>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.md,.markdown,.html,.htm,.js,.jsx,.ts,.tsx,.css,.json,.txt"
-                    multiple
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full"
-                    disabled={isLoading}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {isLoading ? 'Processing...' : uploadedDocs.length > 0 ? `Add More Files` : 'Upload Files'}
-                  </Button>
-                  {uploadedDocs.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      <p className="text-xs text-muted-foreground">Uploaded ({uploadedDocs.length}):</p>
-                      {uploadedDocs.map((doc, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-xs text-muted-foreground group">
-                          <FileText className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate flex-1">{doc.name}</span>
-                          <button
-                            onClick={() => handleRemoveFile(doc.name)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive flex-shrink-0"
-                            aria-label={`Remove ${doc.name}`}
-                            disabled={isLoading}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearChat}
-                className="w-full mt-4 text-destructive"
-              >
-                Clear Chat
-              </Button>
-            </div>
-          )}
-
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-background to-muted/20">
             {messages.length === 0 && (
-              <div className="text-center text-muted-foreground text-sm py-8">
-                <p>Start a conversation with {modeLabels[mode]}</p>
-                <p className="text-xs mt-2">{modeDescriptions[mode]}</p>
+              <div className="text-center text-muted-foreground py-8 space-y-3">
+                <div className="flex justify-center">
+                  <div className="relative">
+                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                      <MessageSquare className="h-8 w-8 text-primary" />
+                    </div>
+                    <Sparkles className="h-4 w-4 absolute -top-1 -right-1 text-yellow-400 animate-pulse" />
+                  </div>
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground mb-1">Hey there! I'm Jobby 👋</p>
+                  <p className="text-sm">Your AI-powered job search assistant</p>
+                </div>
+                <div className="text-xs space-y-1 pt-2">
+                  <p className="font-medium text-foreground/80">I can help you with:</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• Mock interviews</li>
+                    <li>• Resume tailoring</li>
+                    <li>• Job analysis</li>
+                    <li>• Interview prep</li>
+                  </ul>
+                </div>
               </div>
             )}
             {messages.map((message) => (
@@ -519,7 +258,7 @@ export function SupportBot() {
                   className={`max-w-[80%] rounded-lg p-3 ${
                     message.role === 'user'
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
+                      : 'bg-muted border border-border/50'
                   }`}
                 >
                   {message.role === 'assistant' ? (
@@ -534,8 +273,8 @@ export function SupportBot() {
             ))}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-muted rounded-lg p-3">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                <div className="bg-muted border border-border/50 rounded-lg p-3">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 </div>
               </div>
             )}
@@ -543,35 +282,16 @@ export function SupportBot() {
           </div>
 
           {/* Input */}
-          <div className="p-4 border-t border-border">
-            {/* Mode-specific action buttons */}
-            {mode === 'raggy' && (
-              <div className="mb-2 flex gap-2 items-center">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.md,.markdown,.html,.htm,.js,.jsx,.ts,.tsx,.css,.json,.txt"
-                  multiple
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                  className="flex-1"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {isLoading ? 'Processing...' : uploadedDocs.length > 0 ? `Add Files (${uploadedDocs.length})` : 'Upload Files'}
-                </Button>
-                {uploadedDocs.length > 0 && (
-                  <div className="flex items-center text-xs text-muted-foreground px-2">
-                    <FileText className="h-3 w-3 mr-1" />
-                    <span>{uploadedDocs.length} file{uploadedDocs.length > 1 ? 's' : ''}</span>
-                  </div>
-                )}
-              </div>
+          <div className="p-4 border-t border-border bg-background">
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearChat}
+                className="w-full mb-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clear Chat
+              </Button>
             )}
             <div className="flex gap-2">
               <Textarea
@@ -584,7 +304,7 @@ export function SupportBot() {
                     handleSend()
                   }
                 }}
-                placeholder="Type your message..."
+                placeholder="Ask Jobby anything about your job search..."
                 className="min-h-[60px] resize-none"
                 disabled={isLoading}
               />
@@ -592,7 +312,7 @@ export function SupportBot() {
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
                 size="icon"
-                className="h-[60px] w-[60px]"
+                className="h-[60px] w-[60px] bg-gradient-to-br from-primary to-primary/90 hover:from-primary/90 hover:to-primary shadow-lg"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -607,4 +327,3 @@ export function SupportBot() {
     </>
   )
 }
-

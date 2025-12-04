@@ -1,13 +1,19 @@
 import { useState } from "react"
-import { Link, useLocation } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
 
   const closeMenu = () => setIsMenuOpen(false)
+  
+  const handleGetStarted = () => {
+    closeMenu()
+    navigate('/onboarding/step1')
+  }
 
   const navLinks = [
     { to: "/", label: "Home" },
@@ -22,7 +28,7 @@ export function Navbar() {
           <div className="flex items-center gap-2">
             <Link to="/" className="flex items-center space-x-2" onClick={closeMenu}>
               <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                BotAI
+                JobsearchAI
               </span>
             </Link>
           </div>
@@ -60,7 +66,11 @@ export function Navbar() {
               )}
             </button>
             {/* Desktop Get Started Button */}
-            <Button variant="default" className="hidden md:inline-flex">
+            <Button 
+              variant="default" 
+              className="hidden md:inline-flex"
+              onClick={handleGetStarted}
+            >
               Get Started
             </Button>
           </div>
@@ -102,7 +112,7 @@ export function Navbar() {
                   <Button 
                     variant="default" 
                     className="w-full"
-                    onClick={closeMenu}
+                    onClick={handleGetStarted}
                   >
                     Get Started
                   </Button>
