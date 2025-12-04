@@ -1,0 +1,94 @@
+{
+  "company": {
+    "name": "BotAI",
+    "description": "BotAI is a platform for building intelligent AI-powered bots and automation solutions.",
+    "mission": "To democratize AI-powered automation, making it possible for anyone to build intelligent bots that solve real-world problems.",
+    "values": [
+      "Innovation First",
+      "User-Centric",
+      "Passion-Driven"
+    ]
+  },
+  "services": {
+    "chatbotDevelopment": {
+      "title": "Chatbot Development",
+      "description": "Custom chatbot solutions tailored to your business needs",
+      "features": [
+        "AI-powered conversations",
+        "Multi-channel deployment",
+        "Custom integrations",
+        "Analytics and insights"
+      ]
+    },
+    "aiSolutions": {
+      "title": "AI Solutions",
+      "description": "Comprehensive AI solutions for automation and intelligence",
+      "features": [
+        "Machine learning models",
+        "Natural language processing",
+        "Computer vision",
+        "Predictive analytics"
+      ]
+    }
+  },
+  "features": {
+    "core": [
+      {
+        "name": "Advanced AI Engine",
+        "description": "Powered by state-of-the-art machine learning models that understand context, learn from interactions, and adapt to your specific needs."
+      },
+      {
+        "name": "Lightning Fast Performance",
+        "description": "Built for speed with optimized processing pipelines that deliver instant responses, even under heavy load."
+      },
+      {
+        "name": "Enterprise Security",
+        "description": "Bank-level encryption, compliance with industry standards, and comprehensive security features to protect your data."
+      },
+      {
+        "name": "Developer Friendly",
+        "description": "Clean APIs, comprehensive documentation, and extensive SDK support for seamless integration into your workflow."
+      },
+      {
+        "name": "Analytics & Insights",
+        "description": "Real-time analytics and detailed insights to help you understand bot performance and optimize interactions."
+      },
+      {
+        "name": "Multi-Language Support",
+        "description": "Support for 50+ languages out of the box, with automatic language detection and translation capabilities."
+      }
+    ],
+    "additional": [
+      {
+        "name": "Data Privacy",
+        "description": "Your data stays yours. We never share or sell your information."
+      },
+      {
+        "name": "Multi-Channel",
+        "description": "Deploy bots across web, mobile, messaging platforms, and more."
+      },
+      {
+        "name": "Easy Configuration",
+        "description": "Intuitive dashboard and configuration tools for quick setup."
+      },
+      {
+        "name": "Scalable Infrastructure",
+        "description": "Automatically scales to handle millions of interactions seamlessly."
+      },
+      {
+        "name": "Custom Integrations",
+        "description": "Connect with your favorite tools and services via our extensive API."
+      },
+      {
+        "name": "99.9% Uptime",
+        "description": "Reliable infrastructure with guaranteed uptime and 24/7 monitoring."
+      }
+    ]
+  },
+  "about": {
+    "story": "BotAI was born from a simple observation: building intelligent bots shouldn't require a PhD in machine learning or months of development time. We set out to create a platform that makes AI-powered automation accessible to everyone, from startups to enterprises.",
+    "current": "Today, thousands of developers and businesses trust BotAI to power their automation needs. We've helped companies streamline operations, enhance customer experiences, and unlock new possibilities through intelligent automation.",
+    "future": "As we look to the future, we're excited to continue innovating and expanding what's possible with AI. Our commitment remains the same: to provide the best tools and platform for building intelligent bots that make a real difference."
+  }
+}
+
