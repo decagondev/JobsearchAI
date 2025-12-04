@@ -8,6 +8,10 @@ import { Onboarding } from "@/pages/Onboarding"
 import { Searching } from "@/pages/Searching"
 import { Dashboard } from "@/pages/Dashboard"
 import { Settings } from "@/pages/Settings"
+import { Privacy } from "@/pages/Privacy"
+import { Terms } from "@/pages/Terms"
+import { Footer } from "@/components/Footer"
+import { ScrollToTop } from "@/components/ScrollToTop"
 import { SupportBot } from "@/components/SupportBot"
 import { SupportBotProvider } from "@/contexts/SupportBotContext"
 import { memoryBank } from "@/lib/memoryBank"
@@ -48,6 +52,7 @@ function AppContent() {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <div className="min-h-screen bg-background">
         <Navbar />
         <Routes>
@@ -58,7 +63,10 @@ function AppContent() {
           <Route path="/searching" element={<Searching />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
         </Routes>
+        <Footer />
         <SupportBot />
       </div>
     </BrowserRouter>
