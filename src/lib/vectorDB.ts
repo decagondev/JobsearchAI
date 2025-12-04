@@ -148,6 +148,11 @@ class VectorDB {
       (vector) => vector.metadata?.type === 'job'
     )
 
+    if (jobVectors.length === 0) {
+      console.warn('No job vectors found in vectorDB. Jobs may not be embedded yet.')
+      return []
+    }
+
     // Calculate similarity scores for all job vectors
     const results = jobVectors
       .map((vector) => {
@@ -162,7 +167,7 @@ class VectorDB {
           metadata: vector.metadata || {},
         }
       })
-      .filter((result) => result.jobId && result.score > 0) // Only include valid jobs with positive scores
+      .filter((result) => result.jobId) // Only filter out invalid jobIds, keep all scores (even 0)
       .sort((a, b) => b.score - a.score) // Sort by score descending
       .slice(0, limit) // Limit results
 

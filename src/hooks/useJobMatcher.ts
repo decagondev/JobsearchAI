@@ -81,6 +81,33 @@ export function useJobMatcher(): UseJobMatcherReturn {
         return []
       }
 
+      // Ensure all jobs are embedded in vectorDB before matching
+      const existingVectors = await vectorDB.getAll()
+      const embeddedJobIds = new Set(
+        existingVectors
+          .filter((v) => v.metadata?.type === 'job')
+          .map((v) => v.metadata?.jobId as string)
+          .filter(Boolean)
+      )
+
+      // Embed jobs that aren't already embedded
+      const jobsToEmbed = jobs.filter((job) => !embeddedJobIds.has(job.id))
+      if (jobsToEmbed.length > 0) {
+        console.log(`Embedding ${jobsToEmbed.length} jobs in vectorDB before matching...`)
+        await Promise.all(
+          jobsToEmbed.map((job) =>
+            vectorDB.embedJob({
+              id: job.id,
+              title: job.title,
+              company: job.company,
+              description: job.description,
+            })
+          )
+        )
+        // Serialize after embedding to persist
+        await vectorDB.serialize()
+      }
+
       // Generate user embedding text from skills and resume
       const parts: string[] = []
       
@@ -115,10 +142,37 @@ export function useJobMatcher(): UseJobMatcherReturn {
       }
 
       try {
+        // Ensure all jobs are embedded in vectorDB before matching
+        const existingVectors = await vectorDB.getAll()
+        const embeddedJobIds = new Set(
+          existingVectors
+            .filter((v) => v.metadata?.type === 'job')
+            .map((v) => v.metadata?.jobId as string)
+            .filter(Boolean)
+        )
+
+        // Embed jobs that aren't already embedded
+        const jobsToEmbed = jobs.filter((job) => !embeddedJobIds.has(job.id))
+        if (jobsToEmbed.length > 0) {
+          console.log(`Embedding ${jobsToEmbed.length} jobs in vectorDB before matching...`)
+          await Promise.all(
+            jobsToEmbed.map((job) =>
+              vectorDB.embedJob({
+                id: job.id,
+                title: job.title,
+                company: job.company,
+                description: job.description,
+              })
+            )
+          )
+          // Serialize after embedding to persist
+          await vectorDB.serialize()
+        }
+
         // Generate user embedding
         const userEmbedding = vectorDB.generateUserEmbedding(userEmbeddingText)
 
-        // Find similar jobs
+        // Find similar jobs - get matches for all jobs
         const similarJobs = await vectorDB.findSimilarJobs(userEmbedding, jobs.length)
 
         // Create a map of jobId to match result
@@ -127,12 +181,16 @@ export function useJobMatcher(): UseJobMatcherReturn {
         )
 
         // Map results back to Job objects and update with match scores
+        // IMPORTANT: Use the match score from vectorDB if available, otherwise preserve existing score
         let matchedJobs: Job[] = jobs
           .map((job) => {
             const match = matchMap.get(job.id)
+            // If we have a match result, use it (even if score is 0)
+            // Otherwise, preserve existing matchScore from the job
+            const newScore = match !== undefined ? match.score : (job.matchScore ?? 0)
             return {
               ...job,
-              matchScore: match?.score || job.matchScore || 0, // Preserve existing match score if no new match
+              matchScore: newScore,
             }
           })
           .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)) // Sort by score descending
