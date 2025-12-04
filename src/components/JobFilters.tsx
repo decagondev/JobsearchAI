@@ -59,7 +59,11 @@ export function JobFilters({ jobs, onFilteredJobsChange }: JobFiltersProps) {
 
     // Status filter
     if (statusFilter !== 'all') {
-      result = result.filter((job) => job.applicationStatus === statusFilter)
+      result = result.filter((job) => {
+        // Treat undefined/null as 'not_applied'
+        const jobStatus = job.applicationStatus || 'not_applied'
+        return jobStatus === statusFilter
+      })
     }
 
     // Favorites filter

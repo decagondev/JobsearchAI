@@ -66,10 +66,12 @@ export function useJobManagement(): UseJobManagementReturn {
         // Update React Query cache directly instead of invalidating
         // This prevents infinite loops while keeping UI in sync
         // IMPORTANT: Preserve matchScore from existing cache data
+        // Create new array and object references to ensure React detects changes
         queryClient.setQueryData<Job[]>(['jobMatcher', userId], (oldData) => {
           if (!oldData) return oldData
-          return oldData.map(j => {
+          const newData = oldData.map(j => {
             if (j.id === jobId) {
+              // Create new object reference with updated data
               // Preserve matchScore and other computed fields from cache
               return {
                 ...updatedJob,
@@ -78,12 +80,15 @@ export function useJobManagement(): UseJobManagementReturn {
             }
             return j
           })
+          // Return new array reference to ensure React detects the change
+          return newData
         })
         
         queryClient.setQueryData<Job[]>(['jobSearch'], (oldData) => {
           if (!oldData) return oldData
-          return oldData.map(j => {
+          const newData = oldData.map(j => {
             if (j.id === jobId) {
+              // Create new object reference with updated data
               // Preserve matchScore and other computed fields from cache
               return {
                 ...updatedJob,
@@ -92,6 +97,8 @@ export function useJobManagement(): UseJobManagementReturn {
             }
             return j
           })
+          // Return new array reference to ensure React detects the change
+          return newData
         })
       } catch (error) {
         console.error('Failed to update job:', error)

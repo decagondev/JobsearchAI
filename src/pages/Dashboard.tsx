@@ -34,13 +34,18 @@ export function Dashboard() {
   const [filteredJobs, setFilteredJobs] = useState<Job[]>(matchedJobs)
   const previousMatchedJobsRef = useRef<Job[]>([])
 
-  // Update filtered jobs when matched jobs change (only if actually different)
+  // Update filtered jobs when matched jobs change
+  // Also check if job properties changed (not just IDs) to handle status updates
   useEffect(() => {
-    // Compare by length and IDs to avoid unnecessary updates
-    const currentIds = matchedJobs.map(j => j.id).sort().join(',')
-    const previousIds = previousMatchedJobsRef.current.map(j => j.id).sort().join(',')
+    // Create a signature that includes both IDs and key properties that might change
+    const currentSignature = matchedJobs.map(j => 
+      `${j.id}:${j.applicationStatus || 'not_applied'}:${j.isFavorite || false}`
+    ).sort().join(',')
+    const previousSignature = previousMatchedJobsRef.current.map(j => 
+      `${j.id}:${j.applicationStatus || 'not_applied'}:${j.isFavorite || false}`
+    ).sort().join(',')
     
-    if (currentIds !== previousIds) {
+    if (currentSignature !== previousSignature) {
       setFilteredJobs(matchedJobs)
       previousMatchedJobsRef.current = matchedJobs
     }
