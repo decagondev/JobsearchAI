@@ -228,6 +228,7 @@ export function Features() {
               </ul>
               <Button 
                 size="lg" 
+                variant="gradient"
                 className="group"
                 onClick={() => navigate('/onboarding/step1')}
               >
@@ -243,7 +244,7 @@ export function Features() {
                     <span className="text-sm font-bold text-primary">95%+</span>
                   </div>
                   <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: '95%' }}></div>
+                    <div className="h-full bg-gradient-brand rounded-full" style={{ width: '95%' }}></div>
                   </div>
                 </div>
                 <div className="p-4 rounded-lg bg-primary/5 border border-primary/10">

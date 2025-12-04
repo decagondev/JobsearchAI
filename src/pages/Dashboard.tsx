@@ -119,7 +119,9 @@ export function Dashboard() {
       <div className="space-y-6">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Job Matches</h1>
+            <h1 className="text-3xl font-bold mb-2">
+              <span className="text-gradient-brand">Job Matches</span>
+            </h1>
             <p className="text-muted-foreground">
               Jobs ranked by how well they match your profile and skills
             </p>
