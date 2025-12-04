@@ -32,11 +32,15 @@ export function Dashboard() {
   const memoryBank = useMemoryBank()
 
   // Auto-embed jobs in vectorDB when Dashboard loads
+  // Also ensure vectorDB is deserialized from storage
   useEffect(() => {
     const embedJobs = async () => {
       if (!userId) return
 
       try {
+        // Ensure vectorDB is deserialized (restored from storage)
+        await vectorDB.deserialize()
+
         // Load session to get jobs
         const session = await memoryBank.loadSession(userId)
         const jobs = session?.jobs || []

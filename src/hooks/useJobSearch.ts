@@ -3,6 +3,7 @@
  * Integrates with TanStack Query for caching, vectorDB for embeddings, and MemoryBank for persistence
  */
 
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { tavilyClient } from '@/lib/search/tavilyClient'
 import { buildSearchQuery } from '@/lib/search/buildSearchQuery'
@@ -16,6 +17,7 @@ export interface UseJobSearchOptions {
   userId?: string
   enabled?: boolean
   maxResults?: number
+  restoreFromStorage?: boolean
 }
 
 export interface UseJobSearchReturn {
@@ -43,11 +45,30 @@ export interface UseJobSearchReturn {
  * ```
  */
 export function useJobSearch(options: UseJobSearchOptions): UseJobSearchReturn {
-  const { profile, skills = [], userId, enabled = true, maxResults = 10 } = options
+  const { profile, skills = [], userId, enabled = true, maxResults = 10, restoreFromStorage = true } = options
   const memoryBank = useMemoryBank()
+  const [restoredJobs, setRestoredJobs] = useState<Job[]>([])
 
   // Build search query from profile and skills
   const searchQuery = buildSearchQuery(profile, skills)
+
+  // Restore jobs from storage on mount
+  useEffect(() => {
+    if (!restoreFromStorage || !userId) return
+
+    const loadStoredJobs = async () => {
+      try {
+        const session = await memoryBank.loadSession(userId)
+        if (session?.jobs && session.jobs.length > 0) {
+          setRestoredJobs(session.jobs)
+        }
+      } catch (error) {
+        console.error('Failed to restore jobs from storage:', error)
+      }
+    }
+
+    loadStoredJobs()
+  }, [userId, restoreFromStorage, memoryBank])
 
   // Use TanStack Query for job search
   const {
@@ -56,10 +77,19 @@ export function useJobSearch(options: UseJobSearchOptions): UseJobSearchReturn {
     error,
     refetch,
   } = useQuery<Job[]>({
-    queryKey: ['jobSearch', searchQuery, maxResults],
+    queryKey: ['jobSearch', searchQuery, maxResults, userId],
     queryFn: async () => {
       if (!searchQuery || searchQuery.trim().length === 0) {
-        throw new Error('Search query cannot be empty. Please provide profile or skills.')
+        // If no search query but we have userId, return stored jobs
+        if (userId && restoreFromStorage) {
+          try {
+            const session = await memoryBank.loadSession(userId)
+            return session?.jobs || []
+          } catch {
+            return []
+          }
+        }
+        return []
       }
 
       // Search for jobs using Tavily
@@ -102,10 +132,16 @@ export function useJobSearch(options: UseJobSearchOptions): UseJobSearchReturn {
     enabled: enabled && !!searchQuery && searchQuery.trim().length > 0,
     staleTime: 10 * 60 * 1000, // 10 minutes - jobs don't change that frequently
     retry: 2,
+    placeholderData: restoredJobs.length > 0 ? restoredJobs : undefined,
   })
 
+  // Return restored jobs if query is not enabled and we have restored jobs
+  const finalJobs = (!enabled || !searchQuery || searchQuery.trim().length === 0) && restoredJobs.length > 0
+    ? restoredJobs
+    : jobs
+
   return {
-    jobs,
+    jobs: finalJobs,
     isLoading,
     error: error as Error | null,
     refetch: () => {

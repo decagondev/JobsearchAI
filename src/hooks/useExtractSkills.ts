@@ -9,6 +9,11 @@ import { useMemoryBank } from './useMemoryBank'
 import { vectorDB } from '@/lib/vectorDB'
 import type { Session } from '@/types/session'
 
+export interface UseExtractSkillsOptions {
+  userId?: string | null
+  autoRestore?: boolean
+}
+
 export interface UseExtractSkillsReturn {
   extract: (resumeText: string, userId: string) => Promise<void>
   isLoading: boolean
@@ -22,12 +27,14 @@ export interface UseExtractSkillsReturn {
  * Hook for skills extraction functionality
  * Handles Groq API calls, MemoryBank persistence, and vectorDB embeddings
  * 
+ * @param options - Options including userId for auto-restore
  * @example
  * ```tsx
- * const { extract, isLoading, error, isAlreadyExtracted } = useExtractSkills()
+ * const { extract, isLoading, error, isAlreadyExtracted } = useExtractSkills({ userId })
  * ```
  */
-export function useExtractSkills(): UseExtractSkillsReturn {
+export function useExtractSkills(options: UseExtractSkillsOptions = {}): UseExtractSkillsReturn {
+  const { userId, autoRestore = true } = options
   const memoryBank = useMemoryBank()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -118,6 +125,36 @@ export function useExtractSkills(): UseExtractSkillsReturn {
   const clearError = useCallback(() => {
     setError(null)
   }, [])
+
+  /**
+   * Restore extraction result from session on mount
+   */
+  useEffect(() => {
+    if (!autoRestore || !userId) return
+
+    const restoreState = async () => {
+      try {
+        const alreadyExtracted = await checkIfExtracted(userId)
+        if (alreadyExtracted) {
+          setIsAlreadyExtracted(true)
+          const session = await memoryBank.loadSession(userId)
+          if (session?.skills) {
+            setResult({
+              skills: session.skills,
+              seniority: (session.seniority as SkillsExtractionResult['seniority']) || 'mid',
+              domains: session.domains || [],
+              experience: session.profile?.yearsExperience || 0
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Failed to restore extraction state:', err)
+        // Don't set error - this is a background restore operation
+      }
+    }
+
+    restoreState()
+  }, [userId, autoRestore, memoryBank, checkIfExtracted])
 
   return {
     extract,

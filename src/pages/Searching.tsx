@@ -33,7 +33,7 @@ export function Searching() {
     error: extractionError,
     isAlreadyExtracted,
     result: extractionResult,
-  } = useExtractSkills()
+  } = useExtractSkills({ userId, autoRestore: true })
 
   const {
     jobs,
@@ -55,8 +55,9 @@ export function Searching() {
       : undefined,
     skills: extractionResult?.skills || [],
     userId: userId || undefined,
-    enabled: isAlreadyExtracted || !!extractionResult,
+    enabled: isAlreadyExtracted || !!extractionResult, // Enable search when skills are extracted
     maxResults: 10,
+    restoreFromStorage: true,
   })
 
   // Auto-trigger skills extraction on mount if needed
@@ -68,14 +69,26 @@ export function Searching() {
     }
 
     const triggerExtraction = async () => {
-      if (!isAlreadyExtracted && !isExtracting && !extractionResult) {
+      // If skills are already extracted, move to searching stage
+      if (isAlreadyExtracted || extractionResult) {
+        // Check if we have jobs - if so, we're already complete
+        if (jobs.length > 0) {
+          setCurrentStage('complete')
+        } else {
+          setCurrentStage('searching')
+        }
+        return
+      }
+
+      // Only trigger extraction if not already extracted and not currently extracting
+      if (!isExtracting && !extractionResult) {
         setCurrentStage('extracting')
         await extract(formData.resumeRaw!, userId)
       }
     }
 
     triggerExtraction()
-  }, [userId, formData.resumeRaw, isAlreadyExtracted, isExtracting, extractionResult, extract])
+  }, [userId, formData.resumeRaw, isAlreadyExtracted, isExtracting, extractionResult, extract, jobs.length])
 
   // Update stage based on extraction status
   useEffect(() => {
@@ -94,12 +107,19 @@ export function Searching() {
       setError(searchError.message)
     } else if (jobs.length > 0 && !isSearching) {
       setCurrentStage('complete')
-      // Navigate to dashboard after a short delay to show completion
-      setTimeout(() => {
-        navigate('/dashboard')
-      }, 1500)
+      // Only auto-navigate if we just completed a search (not if we're restoring)
+      // Check if we're in the middle of searching or if search just completed
+      if (currentStage === 'searching') {
+        // Navigate to dashboard after a short delay to show completion
+        setTimeout(() => {
+          navigate('/dashboard')
+        }, 1500)
+      } else if (currentStage === 'complete') {
+        // If already complete (restored state), allow user to manually navigate
+        // Don't auto-navigate on restore
+      }
     }
-  }, [searchError, jobs, isSearching, navigate])
+  }, [searchError, jobs, isSearching, navigate, currentStage])
 
   // Calculate progress percentage
   const getProgress = (): number => {
