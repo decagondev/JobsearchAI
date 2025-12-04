@@ -69,7 +69,12 @@ src/
 │   ├── fileParser.ts   # Document parsing
 │   ├── pdfParser.ts    # PDF-specific parsing
 │   ├── storage.ts      # IndexedDB wrapper
+│   ├── memoryBank.ts   # Session persistence service
 │   └── siteContext.json # Bot context data
+├── hooks/              # React hooks
+│   └── useMemoryBank.ts # MemoryBank hook
+├── types/              # TypeScript type definitions
+│   └── session.ts      # Session data types
 └── main.tsx           # Application entry point
 ```
 
@@ -81,6 +86,7 @@ src/
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
+- `npm test` - Run Vitest test suite
 
 ### Environment Variables
 
@@ -101,6 +107,101 @@ Get your API key from [Groq Console](https://console.groq.com/)
    - Chat about the uploaded documents
    - Special resume analysis with career recommendations
    - Multiple file support with vector-based semantic search
+
+## MemoryBank Service
+
+The MemoryBank service provides typed session persistence for user data, job searches, and application state. It uses IndexedDB for client-side storage and follows SOLID principles for extensibility.
+
+### Basic Usage
+
+```typescript
+import { useMemoryBank } from '@/hooks/useMemoryBank'
+
+function MyComponent() {
+  const memoryBank = useMemoryBank()
+
+  // Save a new session
+  const userId = await memoryBank.saveSession({
+    profile: {
+      name: 'John Doe',
+      currentTitle: 'Software Engineer',
+      yearsExperience: 5,
+    },
+    skills: ['TypeScript', 'React', 'Node.js'],
+  })
+
+  // Load a session
+  const session = await memoryBank.loadSession(userId)
+
+  // Update profile
+  await memoryBank.updateProfile(userId, {
+    name: 'John Smith',
+    targetSalary: 120000,
+  })
+
+  // Add a job
+  await memoryBank.addJob(userId, {
+    id: 'job-123',
+    title: 'Senior Software Engineer',
+    company: 'Tech Corp',
+    url: 'https://example.com/job',
+    matchScore: 0.95,
+  })
+
+  // Update skills
+  await memoryBank.updateSkills(userId, ['TypeScript', 'React', 'Python'])
+
+  // Clear session
+  await memoryBank.clearSession(userId)
+}
+```
+
+### Session Data Structure
+
+```typescript
+interface Session {
+  userId: string
+  profile?: UserProfile
+  skills?: string[]
+  resumeRaw?: string
+  jobs?: Job[]
+  createdAt: string
+  updatedAt: string
+}
+
+interface UserProfile {
+  name?: string
+  currentTitle?: string
+  yearsExperience?: number
+  targetSalary?: number
+  preferredLocations?: string[]
+  remotePreference?: 'remote' | 'onsite' | 'hybrid'
+  techStack?: string[]
+  roleKeywords?: string[]
+}
+
+interface Job {
+  id: string
+  title: string
+  company: string
+  url: string
+  description?: string
+  matchScore?: number
+  summary?: string
+  prepTasks?: PrepTask[]
+  createdAt?: string
+}
+```
+
+### Testing
+
+Run the test suite with:
+
+```bash
+npm test
+```
+
+The MemoryBank service includes comprehensive unit tests covering all CRUD operations, edge cases, and error handling.
 
 ## License
 

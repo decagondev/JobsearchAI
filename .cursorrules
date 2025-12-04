@@ -1,0 +1,180 @@
+# JobsearchAI - Cursor IDE Rules
+
+This file contains project-specific rules and conventions for AI-assisted development in Cursor IDE. Follow these rules when generating or modifying code.
+
+## SOLID Principles
+
+1. **Single Responsibility**: Each module/component should have one clear purpose
+   - Parsers handle only parsing (e.g., `pdfParser.ts`, `fileParser.ts`)
+   - Storage handles only persistence (e.g., `storage.ts`, `memoryBank.ts`)
+   - Hooks handle only React state/logic (e.g., `useMemoryBank.ts`)
+   - Never mix concerns (e.g., don't put API calls in parsers)
+
+2. **Open-Closed**: Design for extension without modification
+   - Use abstract interfaces for services (e.g., search providers can be swapped)
+   - Extend existing hooks rather than modifying them
+   - Add new bot modes by extending `groqClient.ts` patterns
+
+3. **Liskov Substitution**: Interchangeable implementations
+   - AI models should be swappable (Groq client supports multiple models)
+   - Storage backends should be interchangeable (MemoryBank abstracts IndexedDB)
+
+4. **Interface Segregation**: Focused, minimal interfaces
+   - Hooks should do one thing well (e.g., `useMemoryBank` only for sessions)
+   - Don't create monolithic hooks that do everything
+
+5. **Dependency Inversion**: Depend on abstractions
+   - Use MemoryBank service, not direct IndexedDB access
+   - Use vectorDB abstraction, not direct vector operations
+   - Services should accept dependencies via parameters when possible
+
+## Naming Conventions
+
+6. **Components**: Use PascalCase for all React components
+   - Examples: `SupportBot.tsx`, `MarkdownRenderer.tsx`, `Navbar.tsx`
+   - Component files must match component name exactly
+
+7. **Hooks**: All custom hooks must start with `use` prefix, camelCase
+   - Examples: `useMemoryBank`, `useJobSearch`, `useSkillsExtractor`
+   - Hook files: `useMemoryBank.ts` (not `UseMemoryBank.ts`)
+
+8. **Functions/Utilities**: Use camelCase
+   - Examples: `saveSession()`, `loadSession()`, `generateEmbedding()`
+
+9. **Types/Interfaces**: Use PascalCase
+   - Examples: `Session`, `UserProfile`, `Job`, `PrepTask`
+   - Type files: `session.ts` (not `Session.ts`)
+
+10. **Constants**: Use UPPER_SNAKE_CASE for module-level constants
+    - Examples: `DB_NAME`, `DB_VERSION`, `SESSION_STORE`
+
+## File Organization
+
+11. **Directory Structure**: Follow existing patterns
+    - Components: `src/components/` (UI components) and `src/components/ui/` (shadcn components)
+    - Pages: `src/pages/` (route components)
+    - Hooks: `src/hooks/` (custom React hooks)
+    - Types: `src/types/` (TypeScript type definitions)
+    - Lib: `src/lib/` (utilities, services, parsers)
+    - Tests: Co-locate with source files (e.g., `memoryBank.test.ts` next to `memoryBank.ts`)
+
+12. **Path Aliases**: Always use `@/` alias for imports
+    - Use `@/components/SupportBot` not `../../components/SupportBot`
+    - Use `@/lib/memoryBank` not relative paths
+    - Configured in `tsconfig.json` and `vite.config.ts`
+
+## Zod Validation
+
+13. **Form Validation**: Use Zod for ALL form validation and data schemas
+    - Create schemas in `src/schemas/` directory
+    - Export schemas and infer types: `z.infer<typeof schema>`
+    - Example: `src/schemas/onboarding.ts` for wizard forms
+    - Never validate forms without Zod schemas
+
+14. **Data Validation**: Validate external data (API responses, user input) with Zod
+    - Parse and validate before using data
+    - Use `.safeParse()` for error handling
+
+## shadcn/ui Patterns
+
+15. **Component Usage**: Use existing shadcn components from `src/components/ui/`
+    - Available: `button.tsx`, `input.tsx`, `textarea.tsx`
+    - Add new shadcn components via `npx shadcn@latest add [component]`
+    - Never create custom components that duplicate shadcn functionality
+
+16. **Styling**: Use Tailwind CSS 4 classes, follow shadcn design system
+    - Use CSS variables for theming (already configured)
+    - Follow existing component patterns for consistency
+
+## Groq Client Patterns
+
+17. **AI Integration**: Extend `src/lib/groqClient.ts` for new AI features
+    - Add new prompts in separate files: `src/lib/prompts/[feature].prompt.ts`
+    - Use existing `chatWithGroq()` function
+    - Follow existing bot mode patterns (sales, tutor, raggy)
+    - Never hardcode prompts in components
+
+18. **Error Handling**: Always handle Groq API errors gracefully
+    - Use try-catch blocks
+    - Provide user-friendly error messages
+    - Log errors for debugging
+
+## Storage & Persistence
+
+19. **IndexedDB**: Use MemoryBank service, never access IndexedDB directly
+    - Use `useMemoryBank()` hook in components
+    - Use `memoryBank` singleton in services
+    - All session data goes through MemoryBank
+
+20. **VectorDB**: Use `src/lib/vectorDB.ts` for all embedding operations
+    - Use `vectorDB.addVector()` or `vectorDB.upsertVectors()`
+    - Use `vectorDB.search()` for similarity search
+    - Never create custom vector storage
+
+## Testing
+
+21. **Test Coverage**: Write Vitest tests for all new services and hooks
+    - Test files: `[name].test.ts` co-located with source
+    - Mock external dependencies (IndexedDB, APIs)
+    - Test edge cases and error conditions
+    - Run tests with `npm test`
+
+22. **Test Structure**: Use describe/it blocks, follow AAA pattern (Arrange, Act, Assert)
+    - Group related tests in describe blocks
+    - Use clear test names that describe behavior
+    - Mock IndexedDB using `fake-indexeddb` or similar
+
+## React Patterns
+
+23. **Hooks**: Follow React hooks rules
+    - Only call hooks at top level
+    - Use `useMemo` for expensive computations
+    - Use `useEffect` for side effects
+    - Custom hooks should return consistent shapes
+
+24. **State Management**: Prefer local state with hooks, use TanStack Query for server state
+    - Use `useState` for component-local state
+    - Use TanStack Query for API calls and caching
+    - Use MemoryBank for persistent session data
+
+## Commit Messages
+
+25. **Conventional Commits**: Use conventional commit format
+    - `[feat]` for new features
+    - `[fix]` for bug fixes
+    - `[refactor]` for code restructuring
+    - `[test]` for test additions/changes
+    - `[docs]` for documentation
+    - `[chore]` for maintenance tasks
+    - Example: `[feat] Add MemoryBank service for session persistence`
+
+## Code Quality
+
+26. **TypeScript**: Use strict TypeScript, no `any` types
+    - Define interfaces for all data structures
+    - Use type inference where appropriate
+    - Export types from `src/types/` directory
+
+27. **Error Handling**: Always handle errors explicitly
+    - Use try-catch for async operations
+    - Provide meaningful error messages
+    - Log errors for debugging
+    - Never silently fail
+
+28. **Comments**: Add JSDoc comments for public APIs
+    - Document function parameters and return types
+    - Explain complex logic
+    - Keep comments up-to-date with code
+
+## Extensibility
+
+29. **Future-Proofing**: Design for backend migration
+    - Abstract storage layers (MemoryBank can be swapped)
+    - Abstract API clients (search providers can be swapped)
+    - Keep business logic separate from storage/API code
+
+30. **Modularity**: Keep features independent and modular
+    - Each epic should be independently testable
+    - Minimize cross-epic dependencies
+    - Use dependency injection where appropriate
+

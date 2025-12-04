@@ -42,7 +42,7 @@ export const localStorage = {
 
 // IndexedDB utilities
 const DB_NAME = 'BotAI_DB'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let dbInstance: IDBDatabase | null = null
 
@@ -75,6 +75,10 @@ export const initDB = (): Promise<IDBDatabase> => {
       if (!db.objectStoreNames.contains('vectors')) {
         db.createObjectStore('vectors', { keyPath: 'id', autoIncrement: true })
       }
+
+      if (!db.objectStoreNames.contains('sessions')) {
+        db.createObjectStore('sessions', { keyPath: 'userId' })
+      }
     }
   })
 }
@@ -86,6 +90,18 @@ export const db = {
       const transaction = db.transaction([storeName], 'readwrite')
       const store = transaction.objectStore(storeName)
       const request = store.add(data)
+
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  },
+
+  put: async <T>(storeName: string, data: T): Promise<IDBValidKey> => {
+    const db = await initDB()
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([storeName], 'readwrite')
+      const store = transaction.objectStore(storeName)
+      const request = store.put(data)
 
       request.onsuccess = () => resolve(request.result)
       request.onerror = () => reject(request.error)
