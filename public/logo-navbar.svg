@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 40" fill="none">
+  <defs>
+    <linearGradient id="navbarGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon: Briefcase with search -->
+  <g transform="translate(0, 0)">
+    <!-- Briefcase body -->
+    <rect x="2" y="10" width="20" height="14" rx="1.5" fill="url(#navbarGradient)"/>
+    
+    <!-- Briefcase handle -->
+    <path d="M 5 10 L 5 5 Q 5 3 7 3 L 17 3 Q 19 3 19 5 L 19 10" 
+          stroke="url(#navbarGradient)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Briefcase clasp -->
+    <rect x="9" y="10" width="6" height="2" fill="white" opacity="0.3"/>
+    
+    <!-- Search magnifying glass -->
+    <circle cx="14" cy="20" r="4" fill="none" stroke="white" stroke-width="1.5" opacity="0.9"/>
+    <line x1="17" y1="23" x2="20" y2="26" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity="0.9"/>
+    
+    <!-- AI sparkle -->
+    <circle cx="22" cy="6" r="1.5" fill="#3b82f6" opacity="0.8"/>
+  </g>
+  
+  <!-- Text: JobsearchAI -->
+  <g transform="translate(30, 0)">
+    <text x="0" y="24" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="700" fill="url(#navbarGradient)">
+      JobsearchAI
+    </text>
+  </g>
+</svg>
+
