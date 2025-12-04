@@ -7,6 +7,7 @@ import { Features } from "@/pages/Features"
 import { Onboarding } from "@/pages/Onboarding"
 import { Searching } from "@/pages/Searching"
 import { Dashboard } from "@/pages/Dashboard"
+import { Settings } from "@/pages/Settings"
 import { SupportBot } from "@/components/SupportBot"
 import { SupportBotProvider } from "@/contexts/SupportBotContext"
 import { memoryBank } from "@/lib/memoryBank"
@@ -56,6 +57,7 @@ function AppContent() {
           <Route path="/onboarding/*" element={<Onboarding />} />
           <Route path="/searching" element={<Searching />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/settings" element={<Settings />} />
         </Routes>
         <SupportBot />
       </div>

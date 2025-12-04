@@ -237,6 +237,11 @@ export function JobCard({ job, onExpand }: JobCardProps) {
             <CardDescription className="text-base font-medium text-foreground/80">
               {job.company}
             </CardDescription>
+            {job.jobSite && job.jobSite !== 'Unknown' && (
+              <Badge variant="outline" className="mt-1 text-xs">
+                {job.jobSite}
+              </Badge>
+            )}
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
             <div className="flex items-center gap-2">

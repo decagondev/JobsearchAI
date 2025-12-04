@@ -6,8 +6,10 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { vectorDB } from '@/lib/vectorDB'
+import { filterAndPrioritizeJobs } from '@/lib/jobSiteFilter'
 import { useMemoryBank } from './useMemoryBank'
 import { useOnboardingProgress } from './useOnboardingProgress'
+import { useSettings } from './useSettings'
 import type { Job } from '@/types/session'
 
 export interface UseJobMatcherReturn {
@@ -33,6 +35,7 @@ export interface UseJobMatcherReturn {
 export function useJobMatcher(): UseJobMatcherReturn {
   const memoryBank = useMemoryBank()
   const { userId, formData } = useOnboardingProgress()
+  const { jobSitePreferences } = useSettings()
   const [restoredJobs, setRestoredJobs] = useState<Job[]>([])
 
   // Restore jobs from storage on mount
@@ -124,7 +127,7 @@ export function useJobMatcher(): UseJobMatcherReturn {
         )
 
         // Map results back to Job objects and update with match scores
-        const matchedJobs: Job[] = jobs
+        let matchedJobs: Job[] = jobs
           .map((job) => {
             const match = matchMap.get(job.id)
             return {
@@ -133,6 +136,9 @@ export function useJobMatcher(): UseJobMatcherReturn {
             }
           })
           .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)) // Sort by score descending
+
+        // Filter and prioritize based on site preferences
+        matchedJobs = filterAndPrioritizeJobs(matchedJobs, jobSitePreferences)
 
         // Update jobs in MemoryBank with match scores
         if (matchedJobs.length > 0) {
@@ -157,13 +163,15 @@ export function useJobMatcher(): UseJobMatcherReturn {
     enabled: !!userId,
     staleTime: 5 * 60 * 1000, // 5 minutes - match scores don't change frequently
     retry: 2,
-    placeholderData: restoredJobs.length > 0 ? restoredJobs : undefined,
+    placeholderData: restoredJobs.length > 0 ? filterAndPrioritizeJobs(restoredJobs, jobSitePreferences) : undefined,
   })
 
   // Return restored jobs if matched jobs are empty but we have restored jobs
   // This ensures jobs are shown immediately on page refresh
-  const finalJobs = (matchedJobs.length === 0 && restoredJobs.length > 0)
-    ? restoredJobs
+  // Also filter restored jobs by preferences
+  const filteredRestoredJobs = filterAndPrioritizeJobs(restoredJobs, jobSitePreferences)
+  const finalJobs = (matchedJobs.length === 0 && filteredRestoredJobs.length > 0)
+    ? filteredRestoredJobs
     : matchedJobs
 
   return {

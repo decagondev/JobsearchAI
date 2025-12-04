@@ -48,6 +48,20 @@ export interface Job {
   supportingMaterials?: CustomLink[]
   appliedDate?: string
   updatedAt?: string
+  // Job site tracking
+  jobSite?: string
+}
+
+export type JobSitePreference = 'include' | 'exclude' | 'neutral'
+
+export interface JobSiteSettings {
+  [siteName: string]: JobSitePreference
+}
+
+export interface UserSettings {
+  jobSitePreferences?: JobSiteSettings
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface Session {
@@ -58,6 +72,7 @@ export interface Session {
   domains?: string[]
   resumeRaw?: string
   jobs?: Job[]
+  settings?: UserSettings
   createdAt: string
   updatedAt: string
 }

@@ -5,6 +5,7 @@
 
 import { z } from 'zod'
 import type { Job } from '@/types/session'
+import { extractJobSite } from '@/lib/jobSites'
 
 /**
  * Tavily API response schema
@@ -115,6 +116,7 @@ class TavilyClient implements SearchProvider {
             url: result.url,
             description: result.content || '',
             source: 'tavily' as const,
+            jobSite: extractJobSite(result.url),
             createdAt: new Date().toISOString(),
             rawData: {
               score: result.score,

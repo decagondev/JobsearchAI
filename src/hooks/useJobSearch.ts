@@ -7,8 +7,10 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { tavilyClient } from '@/lib/search/tavilyClient'
 import { buildSearchQuery } from '@/lib/search/buildSearchQuery'
+import { filterAndPrioritizeJobs } from '@/lib/jobSiteFilter'
 import { vectorDB } from '@/lib/vectorDB'
 import { useMemoryBank } from './useMemoryBank'
+import { useSettings } from './useSettings'
 import type { UserProfile, Job } from '@/types/session'
 
 export interface UseJobSearchOptions {
@@ -47,9 +49,11 @@ export interface UseJobSearchReturn {
 export function useJobSearch(options: UseJobSearchOptions): UseJobSearchReturn {
   const { profile, skills = [], userId, enabled = true, maxResults = 10, restoreFromStorage = true } = options
   const memoryBank = useMemoryBank()
+  const { jobSitePreferences } = useSettings()
   const [restoredJobs, setRestoredJobs] = useState<Job[]>([])
 
   // Build search query from profile and skills
+  // Note: Site preferences are applied via filtering after search, not in the query
   const searchQuery = buildSearchQuery(profile, skills)
 
   // Restore jobs from storage on mount
@@ -77,7 +81,7 @@ export function useJobSearch(options: UseJobSearchOptions): UseJobSearchReturn {
     error,
     refetch,
   } = useQuery<Job[]>({
-    queryKey: ['jobSearch', searchQuery, maxResults, userId],
+    queryKey: ['jobSearch', searchQuery, maxResults, userId, JSON.stringify(jobSitePreferences)],
     queryFn: async () => {
       if (!searchQuery || searchQuery.trim().length === 0) {
         // If no search query but we have userId, return stored jobs
@@ -92,11 +96,18 @@ export function useJobSearch(options: UseJobSearchOptions): UseJobSearchReturn {
         return []
       }
 
-      // Search for jobs using Tavily
-      const searchResults = await tavilyClient.searchJobs(searchQuery, maxResults)
+      // Search for jobs using Tavily (get more results to account for filtering)
+      const searchLimit = maxResults * 2 // Get more to account for filtering
+      const searchResults = await tavilyClient.searchJobs(searchQuery, searchLimit)
+      
+      // Filter and prioritize based on site preferences
+      const filteredResults = filterAndPrioritizeJobs(searchResults, jobSitePreferences)
+      
+      // Limit to maxResults after filtering
+      const limitedResults = filteredResults.slice(0, maxResults)
 
       // Embed each job in vectorDB for similarity search
-      const embeddingPromises = searchResults.map((job) =>
+      const embeddingPromises = limitedResults.map((job) =>
         vectorDB.embedJob({
           id: job.id,
           title: job.title,
@@ -108,7 +119,7 @@ export function useJobSearch(options: UseJobSearchOptions): UseJobSearchReturn {
       await Promise.all(embeddingPromises)
 
       // Save jobs to MemoryBank if userId is provided
-      if (userId && searchResults.length > 0) {
+      if (userId && limitedResults.length > 0) {
         try {
           // Get existing jobs and merge with new ones
           const session = await memoryBank.loadSession(userId)
@@ -117,7 +128,7 @@ export function useJobSearch(options: UseJobSearchOptions): UseJobSearchReturn {
           // Merge jobs, avoiding duplicates by ID
           const jobMap = new Map<string, Job>()
           existingJobs.forEach((job) => jobMap.set(job.id, job))
-          searchResults.forEach((job) => jobMap.set(job.id, job))
+          limitedResults.forEach((job) => jobMap.set(job.id, job))
           
           const allJobs = Array.from(jobMap.values())
           await memoryBank.updateJobs(userId, allJobs)
@@ -127,7 +138,7 @@ export function useJobSearch(options: UseJobSearchOptions): UseJobSearchReturn {
         }
       }
 
-      return searchResults
+      return limitedResults
     },
     enabled: enabled && !!searchQuery && searchQuery.trim().length > 0,
     staleTime: 10 * 60 * 1000, // 10 minutes - jobs don't change that frequently
