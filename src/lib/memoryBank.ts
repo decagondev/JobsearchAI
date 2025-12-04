@@ -3,10 +3,11 @@
  * Provides typed CRUD operations for session persistence
  */
 
-import { db } from './storage'
+import { db, localStorage } from './storage'
 import type { Session, UserProfile, Job } from '@/types/session'
 
 const SESSION_STORE = 'sessions'
+const SESSION_KEY = 'onboarding_session'
 
 /**
  * Generate a unique user ID for the session
@@ -149,6 +150,18 @@ class MemoryBank {
   }
 
   /**
+   * Update skills, seniority, and domains in session
+   */
+  async updateSkillsData(
+    userId: string,
+    skills: string[],
+    seniority?: string,
+    domains?: string[]
+  ): Promise<void> {
+    await this.updateSession(userId, { skills, seniority, domains })
+  }
+
+  /**
    * Update resume raw text in session
    */
   async updateResume(userId: string, resumeRaw: string): Promise<void> {
@@ -176,6 +189,35 @@ class MemoryBank {
     } catch (error) {
       console.error('MemoryBank getAllSessions error:', error)
       throw new Error(`Failed to get all sessions: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  /**
+   * Get the current user ID from localStorage
+   * Returns null if no session exists
+   * 
+   * @returns Current user ID or null
+   */
+  async getCurrentUserId(): Promise<string | null> {
+    try {
+      const userId = localStorage.get(SESSION_KEY) as string | null
+      
+      // Verify the session exists in IndexedDB
+      if (userId) {
+        const session = await this.loadSession(userId)
+        if (session) {
+          return userId
+        } else {
+          // Session doesn't exist, clear localStorage
+          localStorage.remove(SESSION_KEY)
+          return null
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('MemoryBank getCurrentUserId error:', error)
+      return null
     }
   }
 }

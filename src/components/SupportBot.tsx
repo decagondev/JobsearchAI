@@ -8,6 +8,8 @@ import { parseFile, isResume } from "@/lib/fileParser"
 import { vectorDB } from "@/lib/vectorDB"
 import { localStorage, db } from "@/lib/storage"
 import siteContextData from "@/lib/siteContext.json"
+import { useRAGContext } from "@/hooks/useRAGContext"
+import { useSupportBot } from "@/contexts/SupportBotContext"
 
 interface Message {
   id: string
@@ -17,7 +19,17 @@ interface Message {
 }
 
 export function SupportBot() {
-  const [isOpen, setIsOpen] = useState(false)
+  const {
+    isOpen: contextIsOpen,
+    setIsOpen: setContextIsOpen,
+    initialMessage,
+    setInitialMessage,
+    contextJobId,
+    setContextJobId,
+    mode: contextMode,
+    setMode: setContextMode,
+  } = useSupportBot()
+  
   const [isMaximized, setIsMaximized] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [mode, setMode] = useState<BotMode>('sales')
@@ -27,14 +39,47 @@ export function SupportBot() {
   const [uploadedDocs, setUploadedDocs] = useState<Array<{ name: string; type: string }>>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const buildJobContext = useRAGContext()
+
+  // Sync local state with context
+  const isOpen = contextIsOpen
+  const setIsOpen = setContextIsOpen
 
   // Load saved mode and messages
   useEffect(() => {
     const savedMode = localStorage.get('bot_mode') as BotMode
-    if (savedMode) setMode(savedMode)
+    if (savedMode) {
+      setMode(savedMode)
+      if (!contextMode) {
+        setContextMode(savedMode)
+      }
+    } else if (contextMode) {
+      setMode(contextMode)
+    }
 
     loadMessages()
-  }, [])
+  }, [contextMode, setContextMode])
+
+  // Handle initial message from context (e.g., from quick actions)
+  useEffect(() => {
+    if (isOpen && initialMessage) {
+      setInput(initialMessage)
+      setInitialMessage(null)
+      // Focus input after a short delay to ensure it's rendered
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+    }
+  }, [isOpen, initialMessage, setInitialMessage])
+
+  // Handle mode change from context
+  useEffect(() => {
+    if (contextMode && contextMode !== mode) {
+      setMode(contextMode)
+      localStorage.set('bot_mode', contextMode)
+    }
+  }, [contextMode, mode])
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -87,6 +132,25 @@ export function SupportBot() {
         const results = await vectorDB.search(input, 5)
         if (results.length > 0) {
           context += '\n\nRelevant document excerpts:\n' + results.map(r => r.text).join('\n\n')
+        }
+      } else if (mode === 'jobcoach') {
+        // Get userId from localStorage (set during onboarding)
+        const userId = localStorage.get('onboarding_session') as string | null
+        if (userId) {
+          // Build job-specific context using RAG hook
+          // Use contextJobId if provided (from quick actions)
+          const jobContext = await buildJobContext({
+            userId,
+            query: input,
+            contextJobId: contextJobId || undefined,
+          })
+          context = jobContext
+          // Clear contextJobId after use
+          if (contextJobId) {
+            setContextJobId(null)
+          }
+        } else {
+          context = 'No user session found. Please complete onboarding first to use Job Coach mode.'
         }
       }
 
@@ -270,11 +334,12 @@ export function SupportBot() {
 
   const handleModeChange = (newMode: BotMode) => {
     setMode(newMode)
+    setContextMode(newMode)
     localStorage.set('bot_mode', newMode)
     setShowSettings(false)
     
-    // Clear vector DB when switching modes
-    if (newMode !== 'raggy') {
+    // Clear vector DB when switching modes (except raggy and jobcoach which use vectorDB)
+    if (newMode !== 'raggy' && newMode !== 'jobcoach') {
       vectorDB.clear()
       setUploadedDocs([])
     }
@@ -288,13 +353,15 @@ export function SupportBot() {
   const modeLabels = {
     sales: 'Sales Bot',
     tutor: 'Tutor Bot',
-    raggy: 'Raggy Bot'
+    raggy: 'Raggy Bot',
+    jobcoach: 'Job Coach'
   }
 
   const modeDescriptions = {
     sales: 'Help hire BotAI for chatbot and AI solutions',
     tutor: 'Learn about chatbots and BotAI services',
-    raggy: 'Upload files (PDF, Markdown, HTML, JS, etc.) and chat about them'
+    raggy: 'Upload files (PDF, Markdown, HTML, JS, etc.) and chat about them',
+    jobcoach: 'Get personalized job search coaching and interview prep'
   }
 
   return (
@@ -508,6 +575,7 @@ export function SupportBot() {
             )}
             <div className="flex gap-2">
               <Textarea
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {

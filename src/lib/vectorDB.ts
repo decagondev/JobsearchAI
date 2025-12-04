@@ -1,5 +1,5 @@
 // Simple in-memory vector database for RAG
-interface Vector {
+export interface Vector {
   id: string
   embedding: number[]
   text: string
@@ -112,6 +112,121 @@ class VectorDB {
     const beforeCount = this.vectors.length
     this.vectors = this.vectors.filter(v => v.metadata?.filename !== filename)
     return beforeCount - this.vectors.length
+  }
+
+  /**
+   * Embed a job for similarity search
+   * Creates a vector from job title, company, and description
+   * 
+   * @param job - Job object to embed
+   * @returns Vector ID
+   */
+  async embedJob(job: { id: string; title: string; company: string; description?: string }): Promise<string> {
+    const jobText = `${job.title} at ${job.company}. ${job.description || ''}`.trim()
+    return this.addVector(jobText, {
+      type: 'job',
+      jobId: job.id,
+      title: job.title,
+      company: job.company,
+    })
+  }
+
+  /**
+   * Find similar jobs based on user embedding
+   * Filters vectors by job type and calculates cosine similarity
+   * 
+   * @param userEmbedding - User's embedding vector (from skills + resume)
+   * @param limit - Maximum number of results to return (default: 8)
+   * @returns Array of job matches with scores (0-100) and metadata
+   */
+  async findSimilarJobs(
+    userEmbedding: number[],
+    limit: number = 8
+  ): Promise<Array<{ jobId: string; score: number; metadata: Record<string, any> }>> {
+    // Filter vectors to only job types
+    const jobVectors = this.vectors.filter(
+      (vector) => vector.metadata?.type === 'job'
+    )
+
+    // Calculate similarity scores for all job vectors
+    const results = jobVectors
+      .map((vector) => {
+        const similarity = this.cosineSimilarity(userEmbedding, vector.embedding)
+        // Convert similarity (-1 to 1) to score (0 to 100)
+        // Normalize: (similarity + 1) / 2 * 100
+        const score = Math.max(0, Math.min(100, ((similarity + 1) / 2) * 100))
+        
+        return {
+          jobId: vector.metadata?.jobId as string,
+          score: Math.round(score * 100) / 100, // Round to 2 decimal places
+          metadata: vector.metadata || {},
+        }
+      })
+      .filter((result) => result.jobId && result.score > 0) // Only include valid jobs with positive scores
+      .sort((a, b) => b.score - a.score) // Sort by score descending
+      .slice(0, limit) // Limit results
+
+    return results
+  }
+
+  /**
+   * Generate embedding from text (public helper for user embedding generation)
+   * Exposes the private generateEmbedding method for external use
+   * 
+   * @param text - Text to generate embedding from
+   * @returns Embedding vector
+   */
+  generateUserEmbedding(text: string): number[] {
+    return this.generateEmbedding(text)
+  }
+
+  /**
+   * Serialize all vectors to IndexedDB for persistence
+   * Saves all vectors to the 'vectors' store
+   * 
+   * @returns Promise that resolves when serialization is complete
+   */
+  async serialize(): Promise<void> {
+    const { db } = await import('./storage')
+    
+    try {
+      // Clear existing vectors in IndexedDB
+      await db.clear('vectors')
+      
+      // Save all vectors
+      for (const vector of this.vectors) {
+        await db.put('vectors', vector)
+      }
+    } catch (error) {
+      console.error('Failed to serialize vectors:', error)
+      throw new Error(`Failed to serialize vectors: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+  }
+
+  /**
+   * Deserialize vectors from IndexedDB
+   * Restores all vectors from the 'vectors' store
+   * 
+   * @returns Promise that resolves when deserialization is complete
+   */
+  async deserialize(): Promise<void> {
+    const { db } = await import('./storage')
+    
+    try {
+      // Load all vectors from IndexedDB
+      const savedVectors = await db.getAll<Vector>('vectors')
+      
+      // Restore vectors to memory
+      this.vectors = savedVectors.map((v) => ({
+        id: v.id,
+        embedding: v.embedding,
+        text: v.text,
+        metadata: v.metadata,
+      }))
+    } catch (error) {
+      console.error('Failed to deserialize vectors:', error)
+      throw new Error(`Failed to deserialize vectors: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
 }
 

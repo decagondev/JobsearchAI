@@ -31,12 +31,16 @@ export interface Job {
   summary?: string
   prepTasks?: PrepTask[]
   createdAt?: string
+  source?: 'tavily' | 'manual'
+  rawData?: Record<string, any>
 }
 
 export interface Session {
   userId: string
   profile?: UserProfile
   skills?: string[]
+  seniority?: string
+  domains?: string[]
   resumeRaw?: string
   jobs?: Job[]
   createdAt: string
