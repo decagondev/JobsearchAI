@@ -21,6 +21,13 @@ export interface PrepTask {
   priority?: 'low' | 'medium' | 'high'
 }
 
+export type ApplicationStatus = 'not_applied' | 'applied' | 'interviewing' | 'offer' | 'rejected'
+
+export interface CustomLink {
+  label: string
+  url: string
+}
+
 export interface Job {
   id: string
   title: string
@@ -33,6 +40,14 @@ export interface Job {
   createdAt?: string
   source?: 'tavily' | 'manual'
   rawData?: Record<string, any>
+  // New fields for job management
+  isFavorite?: boolean
+  applicationStatus?: ApplicationStatus
+  notes?: string
+  customLinks?: CustomLink[]
+  supportingMaterials?: CustomLink[]
+  appliedDate?: string
+  updatedAt?: string
 }
 
 export interface Session {

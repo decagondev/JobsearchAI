@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Sparkles, Briefcase, Target, FileText, MessageSquare } from "lucide-react"
+import { ArrowRight, Sparkles, Briefcase, Target, FileText } from "lucide-react"
 
 export function Landing() {
   const navigate = useNavigate()

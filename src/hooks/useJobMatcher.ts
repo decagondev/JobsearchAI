@@ -51,7 +51,8 @@ export function useJobMatcher(): UseJobMatcherReturn {
     }
 
     loadStoredJobs()
-  }, [userId, memoryBank])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   // Use TanStack Query for job matching
   const {

@@ -3,7 +3,8 @@
  * Allows components to open chat with pre-filled prompts and job context
  */
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
+import type { ReactNode } from 'react'
 
 interface JobbyContextValue {
   isOpen: boolean

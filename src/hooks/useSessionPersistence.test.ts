@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
 import { useSessionPersistence } from './useSessionPersistence'
 import { memoryBank } from '@/lib/memoryBank'
 import { vectorDB } from '@/lib/vectorDB'

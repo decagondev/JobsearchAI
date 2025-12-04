@@ -3,15 +3,15 @@
  * Uses useJobMatcher to rank and display jobs by similarity score
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, AlertCircle, RefreshCw } from 'lucide-react'
+import { Loader2, AlertCircle, RefreshCw, RotateCw } from 'lucide-react'
 import { useJobMatcher } from '@/hooks/useJobMatcher'
 import { useOnboardingProgress } from '@/hooks/useOnboardingProgress'
 import { useMemoryBank } from '@/hooks/useMemoryBank'
 import { vectorDB } from '@/lib/vectorDB'
-import { localStorage } from '@/lib/storage'
 import { JobList } from '@/components/JobList'
+import { JobFilters } from '@/components/JobFilters'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import type { Job } from '@/types/session'
 
 /**
  * Dashboard page component
@@ -30,6 +31,25 @@ export function Dashboard() {
   const { matchedJobs, isLoading, error, refetch } = useJobMatcher()
   const { userId } = useOnboardingProgress()
   const memoryBank = useMemoryBank()
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>(matchedJobs)
+  const previousMatchedJobsRef = useRef<Job[]>([])
+
+  // Update filtered jobs when matched jobs change (only if actually different)
+  useEffect(() => {
+    // Compare by length and IDs to avoid unnecessary updates
+    const currentIds = matchedJobs.map(j => j.id).sort().join(',')
+    const previousIds = previousMatchedJobsRef.current.map(j => j.id).sort().join(',')
+    
+    if (currentIds !== previousIds) {
+      setFilteredJobs(matchedJobs)
+      previousMatchedJobsRef.current = matchedJobs
+    }
+  }, [matchedJobs])
+
+  // Memoize the callback to prevent infinite loops
+  const handleFilteredJobsChange = useCallback((jobs: Job[]) => {
+    setFilteredJobs(jobs)
+  }, [])
 
   // Auto-embed jobs in vectorDB when Dashboard loads
   // Also ensure vectorDB is deserialized from storage
@@ -89,14 +109,31 @@ export function Dashboard() {
     refetch()
   }
 
+  const handleRefresh = async () => {
+    // Force refetch to recalculate match scores
+    await refetch()
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Job Matches</h1>
-          <p className="text-muted-foreground">
-            Jobs ranked by how well they match your profile and skills
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Job Matches</h1>
+            <p className="text-muted-foreground">
+              Jobs ranked by how well they match your profile and skills
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="shrink-0"
+          >
+            <RotateCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh Matches
+          </Button>
         </div>
 
         {isLoading && (
@@ -131,10 +168,16 @@ export function Dashboard() {
         )}
 
         {!isLoading && !error && (
-          <JobList
-            jobs={matchedJobs}
-            onStartNewSearch={handleStartNewSearch}
-          />
+          <>
+            <JobFilters
+              jobs={matchedJobs}
+              onFilteredJobsChange={handleFilteredJobsChange}
+            />
+            <JobList
+              jobs={filteredJobs}
+              onStartNewSearch={handleStartNewSearch}
+            />
+          </>
         )}
       </div>
     </div>

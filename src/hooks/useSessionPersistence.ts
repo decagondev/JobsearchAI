@@ -5,7 +5,6 @@
 
 import { useCallback, useEffect } from 'react'
 import { useMemoryBank } from './useMemoryBank'
-import { memoryBank } from '@/lib/memoryBank'
 import { vectorDB } from '@/lib/vectorDB'
 
 /**

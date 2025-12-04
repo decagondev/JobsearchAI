@@ -6,7 +6,6 @@
 import { useCallback } from 'react'
 import { useMemoryBank } from './useMemoryBank'
 import { vectorDB } from '@/lib/vectorDB'
-import type { Session } from '@/types/session'
 
 export interface BuildJobContextOptions {
   userId: string

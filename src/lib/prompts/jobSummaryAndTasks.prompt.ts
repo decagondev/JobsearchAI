@@ -3,7 +3,7 @@
  * Uses Groq to analyze jobs and create actionable preparation plans
  */
 
-import type { Job, UserProfile, PrepTask } from '@/types/session'
+import type { Job, UserProfile } from '@/types/session'
 
 /**
  * Generate system prompt for job analysis and task generation

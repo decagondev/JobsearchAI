@@ -24,7 +24,6 @@ const tavilyResponseSchema = z.object({
 })
 
 type TavilyResult = z.infer<typeof tavilyResultSchema>
-type TavilyResponse = z.infer<typeof tavilyResponseSchema>
 
 /**
  * Abstract interface for search providers (SOLID: Dependency Inversion)

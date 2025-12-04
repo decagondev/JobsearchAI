@@ -7,7 +7,6 @@ import { useState, useCallback, useEffect } from 'react'
 import { extractSkills, type SkillsExtractionResult } from '@/lib/groqClient'
 import { useMemoryBank } from './useMemoryBank'
 import { vectorDB } from '@/lib/vectorDB'
-import type { Session } from '@/types/session'
 
 export interface UseExtractSkillsOptions {
   userId?: string | null

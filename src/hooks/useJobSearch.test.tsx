@@ -2,6 +2,7 @@
  * Tests for useJobSearch hook
  */
 
+import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -38,7 +39,7 @@ function createTestQueryClient() {
     defaultOptions: {
       queries: {
         retry: false,
-        cacheTime: 0,
+        gcTime: 0,
       },
     },
   })
