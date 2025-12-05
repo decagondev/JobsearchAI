@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
 import type { Job, ApplicationStatus } from '@/types/session'
 
 export type SortOption = 'matchScore' | 'title' | 'company' | 'appliedDate'
