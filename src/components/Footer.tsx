@@ -10,8 +10,8 @@ export function Footer() {
   return (
     <footer className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Brand Section */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-start gap-8">
+          {/* Brand Section - Left */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <img 
@@ -23,13 +23,13 @@ export function Footer() {
                 JobsearchAI
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground max-w-xs">
               AI-powered job search platform helping you find and prepare for your next career opportunity.
             </p>
           </div>
 
-          {/* Legal Links */}
-          <div className="space-y-4">
+          {/* Legal Links - Center */}
+          <div className="space-y-4 md:justify-self-center">
             <h3 className="font-semibold text-sm">Legal</h3>
             <ul className="space-y-2">
               <li>
@@ -51,8 +51,8 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Quick Links */}
-          <div className="space-y-4">
+          {/* Quick Links - Right */}
+          <div className="space-y-4 md:justify-self-end">
             <h3 className="font-semibold text-sm">Quick Links</h3>
             <ul className="space-y-2">
               <li>
