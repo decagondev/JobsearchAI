@@ -144,11 +144,11 @@ export function Settings() {
   const getPreferenceLabel = (preference: JobSitePreference) => {
     switch (preference) {
       case 'include':
-        return 'Included'
+        return 'Priority'
       case 'exclude':
         return 'Excluded'
       default:
-        return 'Neutral'
+        return 'Include'
     }
   }
 
@@ -194,11 +194,11 @@ export function Settings() {
                 <CardDescription className="mt-2">
                   Control which job sites to include or exclude from your search results.
                   <br />
-                  <strong>Include:</strong> Prioritize jobs from these sites
+                  <strong>Include:</strong> Include jobs from these sites (default)
+                  <br />
+                  <strong>Priority:</strong> Prioritize jobs from these sites
                   <br />
                   <strong>Exclude:</strong> Filter out jobs from these sites
-                  <br />
-                  <strong>Neutral:</strong> No special preference (default)
                 </CardDescription>
               </div>
               <div className="flex gap-2">
@@ -317,13 +317,22 @@ export function Settings() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
+                        variant={preference === 'neutral' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => handlePreferenceChange(site.name, 'neutral')}
+                        className="min-w-[100px]"
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Include
+                      </Button>
+                      <Button
                         variant={preference === 'include' ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => handlePreferenceChange(site.name, 'include')}
                         className="min-w-[100px]"
                       >
                         <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Include
+                        Priority
                       </Button>
                       <Button
                         variant={preference === 'exclude' ? 'destructive' : 'outline'}
@@ -333,15 +342,6 @@ export function Settings() {
                       >
                         <XCircle className="h-4 w-4 mr-1" />
                         Exclude
-                      </Button>
-                      <Button
-                        variant={preference === 'neutral' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handlePreferenceChange(site.name, 'neutral')}
-                        className="min-w-[100px]"
-                      >
-                        <Minus className="h-4 w-4 mr-1" />
-                        Neutral
                       </Button>
                       {site.isCustom && (
                         <Button
@@ -374,7 +374,7 @@ export function Settings() {
               <div className="p-4 border rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  <h3 className="font-semibold">Included</h3>
+                  <h3 className="font-semibold">Priority</h3>
                 </div>
                 <p className="text-2xl font-bold">
                   {Object.values(jobSitePreferences).filter(p => p === 'include').length}
@@ -397,14 +397,14 @@ export function Settings() {
               </div>
               <div className="p-4 border rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <Minus className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-semibold">Neutral</h3>
+                  <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="font-semibold">Include</h3>
                 </div>
                 <p className="text-2xl font-bold">
                   {allJobSites.length - Object.keys(jobSitePreferences).length}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Sites with no preference
+                  Sites included (default)
                 </p>
               </div>
             </div>
