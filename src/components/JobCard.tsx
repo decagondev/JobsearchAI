@@ -64,7 +64,7 @@ function getMatchScoreColor(score: number): string {
   } else if (score >= 60) {
     return 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border-yellow-500/50'
   } else {
-    return 'bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/50'
+    return 'bg-red-500/20 text-red-900 dark:text-red-100 border-red-500/50'
   }
 }
 

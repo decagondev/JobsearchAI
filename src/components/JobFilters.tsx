@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
 import type { Job, ApplicationStatus } from '@/types/session'
 
 export type SortOption = 'matchScore' | 'title' | 'company' | 'appliedDate'
@@ -40,6 +41,7 @@ export function JobFilters({ jobs, onFilteredJobsChange }: JobFiltersProps) {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all')
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [sortBy, setSortBy] = useState<SortOption>('matchScore')
+  const [minMatch, setMinMatch] = useState(40)
 
   // Filter and sort jobs
   const filteredJobs = useMemo(() => {
@@ -71,6 +73,14 @@ export function JobFilters({ jobs, onFilteredJobsChange }: JobFiltersProps) {
       result = result.filter((job) => job.isFavorite === true)
     }
 
+    // Match percentage filter
+    if (minMatch > 0) {
+      result = result.filter((job) => {
+        const score = job.matchScore || 0
+        return score >= minMatch
+      })
+    }
+
     // Sort
     result.sort((a, b) => {
       switch (sortBy) {
@@ -90,7 +100,7 @@ export function JobFilters({ jobs, onFilteredJobsChange }: JobFiltersProps) {
     })
 
     return result
-  }, [jobs, searchQuery, statusFilter, favoritesOnly, sortBy])
+  }, [jobs, searchQuery, statusFilter, favoritesOnly, sortBy, minMatch])
 
   // Notify parent of filtered jobs changes - use ref to prevent infinite loops
   const previousFilteredJobsRef = useRef<string>('')
@@ -109,9 +119,10 @@ export function JobFilters({ jobs, onFilteredJobsChange }: JobFiltersProps) {
     setStatusFilter('all')
     setFavoritesOnly(false)
     setSortBy('matchScore')
+    setMinMatch(40)
   }
 
-  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || favoritesOnly
+  const hasActiveFilters = searchQuery.trim() !== '' || statusFilter !== 'all' || favoritesOnly || minMatch > 40
 
   return (
     <div className="space-y-4">
@@ -176,6 +187,25 @@ export function JobFilters({ jobs, onFilteredJobsChange }: JobFiltersProps) {
               <SelectItem value="appliedDate">Applied Date</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label htmlFor="min-match" className="text-sm text-muted-foreground whitespace-nowrap">
+            Min Match:
+          </label>
+          <Input
+            id="min-match"
+            type="number"
+            min={0}
+            max={100}
+            value={minMatch}
+            onChange={(e) => {
+              const value = Math.max(0, Math.min(100, Number(e.target.value) || 0))
+              setMinMatch(value)
+            }}
+            className="w-20 h-8 text-sm"
+          />
+          <span className="text-sm text-muted-foreground">%</span>
         </div>
 
         {/* Results count */}
