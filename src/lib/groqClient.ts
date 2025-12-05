@@ -2,6 +2,7 @@ import Groq from 'groq-sdk'
 import { z } from 'zod'
 import { getSkillsExtractionPrompt, getSkillsExtractionUserMessage } from './prompts/skillsExtraction.prompt'
 import { getJobSummaryAndTasksPrompt, getJobSummaryAndTasksUserMessage } from './prompts/jobSummaryAndTasks.prompt'
+import { getCoverLetterPrompt } from './prompts/jobCoachPrompts'
 import type { Job, UserProfile, PrepTask } from '@/types/session'
 
 // Initialize Groq with browser support
@@ -295,6 +296,118 @@ export async function generateJobSummaryAndTasks(
     }
     
     throw new Error('Failed to generate job summary: Unknown error')
+  }
+}
+
+/**
+ * Generate a personalized cover letter for a specific job
+ * 
+ * @param job - Job object to generate cover letter for
+ * @param userProfile - User's profile information
+ * @param skills - Array of user's skills
+ * @param resumeText - User's resume text
+ * @param revisionInstruction - Optional instruction for revising the cover letter (e.g., "make tone more professional")
+ * @returns Cover letter text as a string
+ * @throws Error if generation fails
+ */
+export async function generateCoverLetter(
+  job: Job,
+  userProfile?: UserProfile,
+  skills: string[] = [],
+  resumeText?: string,
+  revisionInstruction?: string
+): Promise<string> {
+  if (!job || !job.title || !job.company) {
+    throw new Error('Job must have title and company')
+  }
+
+  try {
+    // Build context for the cover letter
+    const contextParts: string[] = []
+
+    // Add user profile
+    if (userProfile) {
+      const profileParts: string[] = []
+      if (userProfile.name) profileParts.push(`Name: ${userProfile.name}`)
+      if (userProfile.currentTitle) profileParts.push(`Current Title: ${userProfile.currentTitle}`)
+      if (userProfile.yearsExperience !== undefined) profileParts.push(`Years of Experience: ${userProfile.yearsExperience}`)
+      if (userProfile.techStack && userProfile.techStack.length > 0) {
+        profileParts.push(`Tech Stack: ${userProfile.techStack.join(', ')}`)
+      }
+      if (profileParts.length > 0) {
+        contextParts.push('## User Profile\n' + profileParts.join('\n'))
+      }
+    }
+
+    // Add skills
+    if (skills.length > 0) {
+      contextParts.push(`## Skills\n${skills.join(', ')}`)
+    }
+
+    // Add resume (truncated if too long)
+    if (resumeText) {
+      const resumePreview = resumeText.length > 2000
+        ? resumeText.substring(0, 2000) + '...'
+        : resumeText
+      contextParts.push(`## Resume\n${resumePreview}`)
+    }
+
+    const context = contextParts.length > 0 ? contextParts.join('\n\n') : ''
+
+    // Get the cover letter prompt
+    const userPrompt = getCoverLetterPrompt(job)
+
+    // Add revision instruction if provided
+    const revisionNote = revisionInstruction 
+      ? `\n\nIMPORTANT REVISION REQUEST: ${revisionInstruction}. Please apply this revision while maintaining all the other requirements below.\n`
+      : ''
+
+    // Create system prompt for cover letter generation
+    const systemPrompt = `You are a professional cover letter writing assistant. Your task is to create a personalized, professional cover letter based on the user's profile, skills, resume, and the job description.
+
+${context ? `User Context:\n${context}\n\n` : ''}${revisionNote}
+
+Instructions:
+- Write a professional cover letter that is ready to use (no markdown formatting, just plain text)
+- Address it appropriately (use "Dear Hiring Manager" if no specific name is provided)
+- Keep it concise (ideally one page when formatted)
+- Make it specific to this role and company
+- Use the user's actual experience and skills from their resume
+- Reference specific job requirements that match the user's background
+- Maintain a professional yet personable tone
+- End with a professional closing (Sincerely, [Name])
+${revisionInstruction ? `- Apply the following revision: ${revisionInstruction}` : ''}
+
+Output ONLY the cover letter text, nothing else. No explanations, no markdown, just the cover letter itself.`
+
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ]
+
+    const response = await chatWithGroq(messages)
+    
+    // Clean up the response - remove any markdown code blocks or extra formatting
+    let coverLetter = response.trim()
+    
+    // Remove markdown code blocks if present
+    const codeBlockMatch = coverLetter.match(/```(?:text)?\s*([\s\S]*?)\s*```/)
+    if (codeBlockMatch) {
+      coverLetter = codeBlockMatch[1].trim()
+    }
+    
+    // Remove any leading/trailing quotes
+    coverLetter = coverLetter.replace(/^["']|["']$/g, '')
+    
+    return coverLetter.trim()
+  } catch (error) {
+    console.error('Cover letter generation error:', error)
+    
+    if (error instanceof Error) {
+      throw new Error(`Failed to generate cover letter: ${error.message}`)
+    }
+    
+    throw new Error('Failed to generate cover letter: Unknown error')
   }
 }
 

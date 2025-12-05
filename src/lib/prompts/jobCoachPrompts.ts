@@ -62,3 +62,50 @@ Please explain:
 Be specific and help me understand if this is a good fit for me.`
 }
 
+/**
+ * Generate a cover letter prompt for a specific job
+ * 
+ * @param job - Job object to generate cover letter for
+ * @returns Pre-filled prompt string for cover letter generation
+ */
+export function getCoverLetterPrompt(job: Job): string {
+  const supportingMaterials = job.supportingMaterials && job.supportingMaterials.length > 0
+    ? job.supportingMaterials.map((material, index) => `${index + 1}. ${material.label}: ${material.url}`).join('\n')
+    : null
+
+  const customLinks = job.customLinks && job.customLinks.length > 0
+    ? job.customLinks.map((link, index) => `${index + 1}. ${link.label}: ${link.url}`).join('\n')
+    : null
+
+  let additionalContext = ''
+  if (supportingMaterials || customLinks) {
+    additionalContext = '\n\nAdditional Context:\n'
+    if (supportingMaterials) {
+      additionalContext += `Supporting Materials I've prepared for this application:\n${supportingMaterials}\n\n`
+      additionalContext += 'Please reference these materials in the cover letter where relevant, and include links to them.\n'
+    }
+    if (customLinks) {
+      additionalContext += `Custom Links related to this application:\n${customLinks}\n\n`
+      additionalContext += 'Please incorporate these links naturally into the cover letter where appropriate.\n'
+    }
+  }
+
+  return `I need a personalized cover letter for the ${job.title} position at ${job.company}.
+
+${job.description ? `Job Description:\n${job.description}` : `Job: ${job.title} at ${job.company}`}${additionalContext}
+
+Please create a professional, personalized cover letter that:
+1. Addresses the hiring manager (use a professional greeting)
+2. Demonstrates my understanding of the role and company
+3. Highlights my relevant skills, experience, and achievements from my resume
+4. Shows how my background aligns with the job requirements
+5. References specific aspects of the job description that match my experience
+6. Incorporates any supporting materials or links I've provided above
+7. Maintains a professional yet personable tone
+8. Is concise (ideally one page when formatted)
+
+Use my profile information, skills, and resume content to personalize the letter. Make it specific to this role and company - avoid generic templates. The cover letter should feel authentic and demonstrate genuine interest in this particular position.
+
+Please format it as a ready-to-use cover letter that I can copy and paste.`
+}
+

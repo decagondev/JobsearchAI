@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import { ExternalLink, Loader2, AlertCircle, MessageSquare, FileText, HelpCircle, Heart, Plus, Trash2, Edit2, Save, X } from 'lucide-react'
+import { ExternalLink, Loader2, AlertCircle, MessageSquare, FileText, HelpCircle, FileEdit, Heart, Plus, Trash2, Edit2, Save, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { PrepChecklist } from './PrepChecklist'
+import { CoverLetterModal } from './CoverLetterModal'
 import { useGeneratePrepPlan } from '@/hooks/useGeneratePrepPlan'
 import { useSupportBot } from '@/contexts/SupportBotContext'
 import { useJobManagement } from '@/hooks/useJobManagement'
@@ -82,6 +83,7 @@ function getMatchScoreColor(score: number): string {
 export function JobCard({ job, onExpand }: JobCardProps) {
   const matchScore = job.matchScore || 0
   const [isExpanded, setIsExpanded] = useState(false)
+  const [isCoverLetterModalOpen, setIsCoverLetterModalOpen] = useState(false)
   const [notes, setNotes] = useState(job.notes || '')
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [newLinkLabel, setNewLinkLabel] = useState('')
@@ -126,6 +128,10 @@ export function JobCard({ job, onExpand }: JobCardProps) {
 
   const handleExplainJob = () => {
     openChat(getExplainJobPrompt(job), job.id)
+  }
+
+  const handleCoverLetter = () => {
+    setIsCoverLetterModalOpen(true)
   }
 
   // Job management handlers - memoized to prevent re-renders
@@ -343,6 +349,15 @@ export function JobCard({ job, onExpand }: JobCardProps) {
           >
             <HelpCircle className="h-4 w-4 mr-2" />
             Explain Job
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCoverLetter}
+            className="flex-1 md:flex-1 lg:flex-none min-w-[100px] lg:min-w-[140px]"
+          >
+            <FileEdit className="h-4 w-4 mr-2" />
+            Cover Letter
           </Button>
         </div>
 
@@ -598,6 +613,13 @@ export function JobCard({ job, onExpand }: JobCardProps) {
             </AccordionItem>
           </Accordion>
       </CardContent>
+
+      {/* Cover Letter Modal */}
+      <CoverLetterModal
+        job={job}
+        isOpen={isCoverLetterModalOpen}
+        onOpenChange={setIsCoverLetterModalOpen}
+      />
     </Card>
   )
 }
