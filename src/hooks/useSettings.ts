@@ -6,13 +6,16 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useMemoryBank } from './useMemoryBank'
 import { useOnboardingProgress } from './useOnboardingProgress'
-import type { UserSettings, JobSiteSettings, JobSitePreference } from '@/types/session'
+import type { UserSettings, JobSiteSettings, JobSitePreference, CustomJobSite } from '@/types/session'
 
 export interface UseSettingsReturn {
   settings: UserSettings
   jobSitePreferences: JobSiteSettings
+  customJobSites: CustomJobSite[]
   updateJobSitePreference: (siteName: string, preference: JobSitePreference) => Promise<void>
   resetJobSitePreferences: () => Promise<void>
+  addCustomJobSite: (site: CustomJobSite) => Promise<void>
+  removeCustomJobSite: (siteName: string) => Promise<void>
   isLoading: boolean
 }
 
@@ -123,6 +126,44 @@ export function useSettings(): UseSettingsReturn {
     await saveSettings(updatedSettings)
   }, [settings, saveSettings])
 
+  /**
+   * Add a custom job site
+   */
+  const addCustomJobSite = useCallback(
+    async (site: CustomJobSite) => {
+      const currentCustomSites = settings.customJobSites || []
+      // Check if site with same name already exists
+      if (currentCustomSites.some(s => s.name.toLowerCase() === site.name.toLowerCase())) {
+        throw new Error(`Job site "${site.name}" already exists`)
+      }
+      const updatedSettings: UserSettings = {
+        ...settings,
+        customJobSites: [...currentCustomSites, site],
+      }
+      await saveSettings(updatedSettings)
+    },
+    [settings, saveSettings]
+  )
+
+  /**
+   * Remove a custom job site
+   */
+  const removeCustomJobSite = useCallback(
+    async (siteName: string) => {
+      const currentCustomSites = settings.customJobSites || []
+      const updatedSettings: UserSettings = {
+        ...settings,
+        customJobSites: currentCustomSites.filter(s => s.name !== siteName),
+        // Also remove preference if it exists
+        jobSitePreferences: Object.fromEntries(
+          Object.entries(settings.jobSitePreferences || {}).filter(([name]) => name !== siteName)
+        ),
+      }
+      await saveSettings(updatedSettings)
+    },
+    [settings, saveSettings]
+  )
+
   // Load settings on mount
   useEffect(() => {
     loadSettings()
@@ -131,8 +172,11 @@ export function useSettings(): UseSettingsReturn {
   return {
     settings,
     jobSitePreferences: settings.jobSitePreferences || {},
+    customJobSites: settings.customJobSites || [],
     updateJobSitePreference,
     resetJobSitePreferences,
+    addCustomJobSite,
+    removeCustomJobSite,
     isLoading,
   }
 }

@@ -58,8 +58,14 @@ export interface JobSiteSettings {
   [siteName: string]: JobSitePreference
 }
 
+export interface CustomJobSite {
+  name: string
+  domains: string[]
+}
+
 export interface UserSettings {
   jobSitePreferences?: JobSiteSettings
+  customJobSites?: CustomJobSite[]
   createdAt?: string
   updatedAt?: string
 }
